@@ -1,0 +1,13 @@
+[package]
+name = "industry-advance"
+version = "0.1.0"
+authors = ["casept <davids.paskevics@gmail.com>"]
+edition = "2018"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[dependencies]
+gba = { git = "https://github.com/rust-console/gba" }

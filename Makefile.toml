@@ -1,0 +1,51 @@
+[config]
+skip_core_tasks = true
+
+[tasks.create-target-dir]
+script_runner = "@rust"
+script = [
+'''
+fn main() {
+  std::fs::DirBuilder::new().recursive(true).create("./target/").unwrap();
+}
+'''
+]
+
+[tasks.assemble]
+dependencies = ["create-target-dir"]
+command = "arm-none-eabi-as"
+args = ["crt0.s", "-o", "target/crt0.o"]
+
+[tasks.build-debug]
+dependencies = ["assemble"]
+command = "cargo"
+args = ["xbuild", "--target", "thumbv4-none-agb.json"]
+
+[tasks.build-release]
+dependencies = ["assemble"]
+command = "cargo"
+args = ["xbuild", "--target", "thumbv4-none-agb.json", "--release"]
+
+[tasks.pack-rom]
+command = "arm-none-eabi-objcopy"
+args = ["-O", "binary", "target/thumbv4-none-agb/release/industry-advance", "target/industry-advance.gba"]
+
+[tasks.test]
+command = "cargo"
+args = ["test", "--lib"]
+
+[tasks.justrelease]
+dependencies = ["build-release", "pack-rom"]
+
+[tasks.build-all]
+dependencies = ["build-debug", "build-release", "pack-rom"]
+
+[tasks.build-and-run]
+dependencies = ["justrelease"]
+# If you have a GBA emulator associated with .gba files, this will run the ROM
+# On *nix, just replace command with the name of your emu binary
+command = "powershell"
+args = ["target/industry-advance.gba"]
+
+[tasks.default]
+alias = "build-and-run"
