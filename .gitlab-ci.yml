@@ -1,0 +1,14 @@
+stages:
+  - build
+
+rust-nightly:
+  stage: build
+  image: rustlang/rust:nightly
+  script:
+    - apt update
+    - apt install binutils-arm-none-eabi
+    - cargo install cargo-make cargo-xbuild
+    - rustup component add rust-src
+    - cargo make --verbose
+    - cargo test --verbose
+#  allow_failure: true
