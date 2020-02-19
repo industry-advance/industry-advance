@@ -1,2 +1,4 @@
 /target
 **/*.rs.bk
+.mypy_cache
+.vscode

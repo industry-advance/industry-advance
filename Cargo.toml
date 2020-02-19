@@ -10,4 +10,4 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-gba = { git = "https://github.com/rust-console/gba" }
+gba = { path = "../gba" }

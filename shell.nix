@@ -6,19 +6,15 @@ let
 
   nixPackages = [
     nixpkgs.gdb
-	nixpkgs.git
-	nixpkgs.zsh
-	nixpkgs.neovim
-	nixpkgs.vscode
 	nixpkgs.mgba
 	rustnightly
 	nixpkgs.cargo-make
 	nixpkgs.cargo-xbuild
 	nixpkgs.gcc-arm-embedded
+	nixpkgs.mindustry
+	nixpkgs.python3
   ];
 in
-with nixpkgs;
-stdenv.mkDerivation {
-  name = "sandbox-gba-workspace";
+nixpkgs.mkShell {
   buildInputs = nixPackages;
 }

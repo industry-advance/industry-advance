@@ -42,9 +42,7 @@ dependencies = ["build-debug", "build-release", "pack-rom"]
 
 [tasks.build-and-run]
 dependencies = ["justrelease"]
-# If you have a GBA emulator associated with .gba files, this will run the ROM
-# On *nix, just replace command with the name of your emu binary
-command = "powershell"
+command = "mgba-qt"
 args = ["target/industry-advance.gba"]
 
 [tasks.default]
