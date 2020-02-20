@@ -3,12 +3,8 @@ stages:
 
 rust-nightly:
   stage: build
-  image: rustlang/rust:nightly
+  image: git.mintendo-programmer.de:5050/gba/industry-advance:latest
   script:
-    - apt update
-    - apt install binutils-arm-none-eabi
-    - cargo install cargo-make cargo-xbuild
-    - rustup component add rust-src
     - cargo make --verbose
     # - cargo test --verbose
   artifacts:
