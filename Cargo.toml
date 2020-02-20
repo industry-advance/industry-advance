@@ -10,4 +10,4 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-gba = { path = "https://git.mintendo-programmer.de/gba/gba" }
+gba = { url = "https://git.mintendo-programmer.de/gba/gba", branch="frickel" }

@@ -16,34 +16,47 @@ dependencies = ["create-target-dir"]
 command = "arm-none-eabi-as"
 args = ["crt0.s", "-o", "target/crt0.o"]
 
-[tasks.build-debug]
-dependencies = ["assemble"]
-command = "cargo"
-args = ["xbuild", "--target", "thumbv4-none-agb.json"]
-
-[tasks.build-release]
+[tasks.build]
 dependencies = ["assemble"]
 command = "cargo"
 args = ["xbuild", "--target", "thumbv4-none-agb.json", "--release"]
 
 [tasks.pack-rom]
-command = "arm-none-eabi-objcopy"
-args = ["-O", "binary", "target/thumbv4-none-agb/release/industry-advance", "target/industry-advance.gba"]
+script_runner = "@rust"
+script = [
+'''
+fn main() -> std::io::Result<()> {
+      std::process::Command::new("arm-none-eabi-objcopy").args(
+        &["-O", "binary",
+        &format!("target/thumbv4-none-agb/release/industry-advance"),
+        &format!("target/industry-advance.gba")])
+        .output().expect("failed to objcopy!");
+  
+  Ok(())
+}
+'''
+]
 
 [tasks.test]
 command = "cargo"
 args = ["test", "--lib"]
 
+[tasks.run]
+dependencies = ["build", "pack-rom"]
+command = "mgba"
+args = ["--log-level=-1", "target/industry-advance.gba"]
+
+
+[tasks.run-qt]
+dependencies = ["build", "pack-rom"]
+command = "mgba-qt"
+args = ["--log-level=-1", "target/industry-advance.gba"]
+
 [tasks.justrelease]
-dependencies = ["build-release", "pack-rom"]
+dependencies = ["build", "pack-rom"]
 
 [tasks.build-all]
-dependencies = ["build-debug", "build-release", "pack-rom"]
-
-[tasks.build-and-run]
-dependencies = ["justrelease"]
-command = "mgba-qt"
-args = ["target/industry-advance.gba"]
+dependencies = ["build", "pack-rom"]
 
 [tasks.default]
-alias = "build-and-run"
+alias = "build-all"
