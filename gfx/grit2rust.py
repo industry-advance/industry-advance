@@ -41,7 +41,7 @@ def call_grit(output_path: str, input_path: str, as_tiles: bool, grit_args: str)
     c_file_path = "{}.c".format(path)
 
     # Run grit
-    if grit_args == None:
+    if grit_args is None:
         grit_extra = ""
     else:
         grit_extra = grit_args
@@ -49,9 +49,7 @@ def call_grit(output_path: str, input_path: str, as_tiles: bool, grit_args: str)
         grit_extra = "{} {}".format(grit_extra, "-gT")
 
     subprocess.run(
-        "grit {} -ftc -fh! -U32 -gB4 --output {} {}".format(
-            input_path, c_file_path, grit_extra
-        ),
+        "grit {} -ftc -fh! --output {} {}".format(input_path, c_file_path, grit_extra),
         shell=True,
         check=True,
         stdout=subprocess.PIPE,
@@ -112,7 +110,7 @@ def convert(c_file_path, rust_file_path):
                     rust_lines.append(line)
 
             rf.writelines(rust_lines)
-    # os.remove(c_file_path)
+    os.remove(c_file_path)
 
 
 if __name__ == "__main__":

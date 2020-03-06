@@ -13,7 +13,11 @@ let
 
 	nixpkgs.mindustry
 
-    nixpkgs.python3
+    nixpkgs.python37
+	nixpkgs.python37Packages.black
+	nixpkgs.python37Packages.flake8
+	nixpkgs.python37Packages.pydocstyle
+	nixpkgs.python37Packages.mypy
 
     nixpkgs.gdb
 	nixpkgs.mgba

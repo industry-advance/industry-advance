@@ -7,6 +7,7 @@ use gba::mgba::{MGBADebug, MGBADebugLevel};
 
 mod game;
 mod map;
+mod testmap;
 
 use core::fmt::Write;
 
@@ -30,7 +31,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     loop {}
 }
 
-#[no_mangle]
-static __IRQ_HANDLER: extern "C" fn() = irq_handler;
+//#[no_mangle]
+//static __IRQ_HANDLER: extern "C" fn() = irq_handler;
 
-extern "C" fn irq_handler() {}
+//extern "C" fn irq_handler() {}
