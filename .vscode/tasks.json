@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "kill emulator",
+            "type": "shell",
+            "command": "killall mgba"
+        },
+        {
+            "label": "run GDB server",
+            "type": "shell",
+            "isBackground": false,
+            "linux": {
+                "command": "cargo make debug & ; sleep 5 && echo debuggerReady",
+            },
+            "command": "debuggerReady",
+            "problemMatcher": {
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*debuggerReady.*$",
+                    "endsPattern": "^.*debuggerReady.*$",
+                },
+                // Has to be here to satisfy the retarded problem matcher system
+                "pattern": {
+                    "regexp": ""
+                },
+            }
+        },
+    ]
+}

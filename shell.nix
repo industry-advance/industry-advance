@@ -23,8 +23,9 @@ let
     nixpkgs.python37Packages.mypy
 
 	# Debugging and testing
-    nixpkgs.gdb
+    nixpkgs.gdb-multitarget
     nixpkgs.mgba
     nixpkgs.xwayland
+    nixpkgs.lldb_9
   ];
 in nixpkgs.mkShell { buildInputs = nixPackages; }

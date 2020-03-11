@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "mGBA GDB",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "target": "${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance",
+            "gdbpath": "rust-gdb",
+            //"preLaunchTask": "run GDB server",
+            //"postDebugTask": "kill emulator",
+            "autorun": [
+                "target remote localhost:2345",
+                "symbol-file ./target/thumbv4-none-agb/debug/industry-advance",
+                // "monitor reset" 
+                // Target does not support this command.
+            ]
+        }
+    ]
+}

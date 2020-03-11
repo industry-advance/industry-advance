@@ -1,0 +1,2 @@
+[build]
+target = "thumbv4-none-agb.json"

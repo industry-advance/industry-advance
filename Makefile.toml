@@ -21,6 +21,11 @@ dependencies = ["assemble"]
 command = "cargo"
 args = ["xbuild", "--target", "thumbv4-none-agb.json", "--release"]
 
+[tasks.build-debug]
+dependencies = ["assemble"]
+command = "cargo"
+args = ["xbuild", "--target", "thumbv4-none-agb.json"]
+
 [tasks.pack-rom]
 script_runner = "@rust"
 script = [
@@ -46,11 +51,10 @@ dependencies = ["build", "pack-rom"]
 command = "mgba"
 args = ["--log-level=-1", "target/industry-advance.gba"]
 
-
 [tasks.run-qt]
 dependencies = ["build", "pack-rom"]
-command = "mgba-qt"
-args = ["--log-level=-1", "target/industry-advance.gba"]
+command = "/usr/bin/mgba-qt"
+args = ["--log-level=16", "target/industry-advance.gba"]
 
 [tasks.justrelease]
 dependencies = ["build", "pack-rom"]
@@ -60,3 +64,8 @@ dependencies = ["build", "pack-rom"]
 
 [tasks.default]
 alias = "build-all"
+
+[tasks.debug]
+dependencies = ["build-debug"]
+command = "/usr/bin/mgba-qt"
+args = ["--log-level=-1", "./target/thumbv4-none-agb/debug/industry-advance", "--gdb"]
