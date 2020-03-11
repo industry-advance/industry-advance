@@ -1,10 +1,9 @@
 use crate::testmap::*;
 
 use gba::{
-    io::background::{BackgroundControlSetting, BG0CNT},
-    io::display::{DisplayControlSetting, DisplayMode, BGSettings, Background, set_background_settings, DISPCNT},
-    palram, vram,
-    vram::text::TextScreenblockEntry,
+    io::background::{BGSize, BackgroundControlSetting, BG0CNT},
+    io::display::{DisplayControlSetting, DisplayMode, DISPCNT},
+    mgba, palram, vram,
 };
 use typenum::consts::U1024;
 use voladdress::VolBlock;
@@ -16,10 +15,14 @@ const PALETTE_SIZE: usize = 256;
 // TODO: Variable size
 const TILEMAP_SIZE: usize = 1024;
 
+// TODO: Use dynamic allocator/borrow checker to prevent collisions with memory areas already in use
+const CHARBLOCK: usize = 0;
+const SCREENBLOCK: usize = 8; // First to not overlap w/ charblock 0
+
 pub(crate) struct Map<'a> {
-    tileset: &'a [u32], // Tileset to display
+    tileset: &'a [u32],               // Tileset to display
     palette: &'a [u16; PALETTE_SIZE], // Palette for tiles
-    tilemap: &'a [u16], // Part of tilemap currently in VRAM
+    tilemap: &'a [u16],               // Part of tilemap currently in VRAM
 }
 
 impl Map<'_> {
@@ -54,32 +57,41 @@ impl Map<'_> {
 
         // Copy tiles into VRAM
         // Character block 0 is always used for background map layer data
-        let charblock = vram::get_8bpp_character_block(0);
+        let charblock = vram::get_8bpp_character_block(CHARBLOCK);
         for (i, b) in charblock.iter().enumerate() {
             // Check whether we have exhausted tileset
-            if i*16 >= self.tileset.len() {
+            if i * 16 >= self.tileset.len() {
                 break;
             }
 
             // Otherwise, copy a subslice into VRAM
-            let subslice = &self.tileset[(8*i)..(8*i+16)];
-            let mut tiles: [u32; 16] = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0];
+            let subslice = &self.tileset[(16 * i)..(16 * i + 16)];
+            let mut tiles: [u32; 16] = [
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+            ];
             tiles.copy_from_slice(subslice);
             b.write(vram::Tile8bpp(tiles));
         }
 
         // Copy tilemap into VRAM
-        let tilemap = vram::get_screen_block(8); // Important to choose one that's not used by charblock (see https://www.coranac.com/tonc/text/regbg.htm)!
-        // Tell GBA to use the tilemap
-        set_background_settings(Background::BG0, BGSettings::new().with_screen_base_block(8));
-        for (i, entry) in tilemap.iter().enumerate() {
+        let screenblock = vram::get_screen_block(SCREENBLOCK); // Important to choose one that's not used by charblock (see https://www.coranac.com/tonc/text/regbg.htm)!
+        for (i, entry) in screenblock.iter().enumerate() {
+            // There's no direct API to interpret u16's as tile data, making transmutation necessary
             let tile_entry: vram::text::TextScreenblockEntry;
-
             unsafe {
                 tile_entry =
                     mem::transmute::<u16, vram::text::TextScreenblockEntry>(self.tilemap[i]);
             }
             entry.write(tile_entry);
         }
+
+        // Set the parameters for the background
+        BG0CNT.write(
+            BackgroundControlSetting::new()
+                .with_is_8bpp(true)
+                .with_screen_base_block(SCREENBLOCK.try_into().unwrap())
+                .with_char_base_block(CHARBLOCK.try_into().unwrap())
+                .with_size(BGSize::Zero),
+        );
     }
 }
