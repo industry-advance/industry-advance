@@ -1,6 +1,7 @@
 let
   sources = import ./nix/sources.nix;
   rust = import ./nix/rust.nix { inherit sources; };
+  grit = import ./nix/grit.nix { inherit sources; };
   nixpkgs = import sources.nixpkgs { };
 
   nixPackages = [
@@ -11,18 +12,19 @@ let
     nixpkgs.cargo-xbuild
     nixpkgs.gcc-arm-embedded
     nixpkgs.cacert
+    grit
 
-	# Reference implementation
+    # Reference implementation
     nixpkgs.mindustry
 
-	# Execution and maintenance of python glue
+    # Execution and maintenance of python glue
     nixpkgs.python37
     nixpkgs.python37Packages.black
     nixpkgs.python37Packages.flake8
     nixpkgs.python37Packages.pydocstyle
     nixpkgs.python37Packages.mypy
 
-	# Debugging and testing
+    # Debugging and testing
     nixpkgs.gdb-multitarget
     nixpkgs.mgba
     nixpkgs.xwayland
