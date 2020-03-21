@@ -15,3 +15,4 @@ opt-level = 3
 gba = { git = "https://gitlab.spline.inf.fu-berlin.de/gba/gba", branch = "frickel" }
 voladdress = "*"
 typenum = "*"
+linked_list_allocator = {version = "*", default_features = false} # Spinlock unusable due to lack of HW support for atomics

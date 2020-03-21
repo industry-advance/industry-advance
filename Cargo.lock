@@ -3,7 +3,7 @@
 [[package]]
 name = "gba"
 version = "0.4.0-pre"
-source = "git+https://git.mintendo-programmer.de/gba/gba?branch=frickel#d8969e8575a51cc6ef9fffd9a32e1090de20e255"
+source = "git+https://gitlab.spline.inf.fu-berlin.de/gba/gba?branch=frickel#d8969e8575a51cc6ef9fffd9a32e1090de20e255"
 dependencies = [
  "gba-proc-macro 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -24,10 +24,16 @@ dependencies = [
 name = "industry-advance"
 version = "0.1.0"
 dependencies = [
- "gba 0.4.0-pre (git+https://git.mintendo-programmer.de/gba/gba?branch=frickel)",
+ "gba 0.4.0-pre (git+https://gitlab.spline.inf.fu-berlin.de/gba/gba?branch=frickel)",
+ "linked_list_allocator 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "voladdress 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "linked_list_allocator"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "proc-macro2"
@@ -79,8 +85,9 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
-"checksum gba 0.4.0-pre (git+https://git.mintendo-programmer.de/gba/gba?branch=frickel)" = "<none>"
+"checksum gba 0.4.0-pre (git+https://gitlab.spline.inf.fu-berlin.de/gba/gba?branch=frickel)" = "<none>"
 "checksum gba-proc-macro 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2cf87285990ee5c1165d24cc92d0cb5b4706c9e835e645850ef88acb811d25ac"
+"checksum linked_list_allocator 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5825aea823c659d0fdcdbe8c9b78baf56f3a10365d783db874f6d360df72626f"
 "checksum proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)" = "cf3d2011ab5c909338f7887f4fc896d35932e29146c12c8d01da6b22a80ba759"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
 "checksum syn 0.15.44 (registry+https://github.com/rust-lang/crates.io-index)" = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"
