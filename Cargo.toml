@@ -10,6 +10,8 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-gba = { git = "https://git.mintendo-programmer.de/gba/gba", branch = "frickel" }
+# TODO: Revert to mintendo-programmer server once certificate is fixed
+#gba = { git = "https://git.mintendo-programmer.de/gba/gba", branch = "frickel" }
+gba = { git = "https://gitlab.spline.inf.fu-berlin.de/gba/gba", branch = "frickel" }
 voladdress = "*"
 typenum = "*"
