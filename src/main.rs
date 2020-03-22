@@ -27,11 +27,12 @@ use game::Game;
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     // This kills the emulation with a message if we're running within mGBA.
-    let mut fatal = MGBADebug::new().unwrap();
-    writeln!(fatal, "{}", info).unwrap();
-    fatal.send(MGBADebugLevel::Fatal);
+    let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
+    writeln!(writer, "{}", info.fg(red())).expect("Failed to write panic to MGBA debug register");
+    writer.send(MGBADebugLevel::Fatal);
     // If we're _not_ running within mGBA then we still need to not return, so
     // loop forever doing nothing.
+    // TODO: Consider implementing output over serial/graphical error message display
     loop {}
 }
 
