@@ -2,14 +2,8 @@
 skip_core_tasks = true
 
 [tasks.create-target-dir]
-script_runner = "@rust"
-script = [
-'''
-fn main() {
-  std::fs::DirBuilder::new().recursive(true).create("./target/").unwrap();
-}
-'''
-]
+command = "mkdir"
+args = ["-p", "./target"]
 
 [tasks.assemble]
 dependencies = ["create-target-dir"]
@@ -27,24 +21,14 @@ command = "cargo"
 args = ["xbuild", "--target", "thumbv4-none-agb.json"]
 
 [tasks.pack-rom]
-script_runner = "@rust"
-script = [
-'''
-fn main() -> std::io::Result<()> {
-      std::process::Command::new("arm-none-eabi-objcopy").args(
-        &["-O", "binary",
-        &format!("target/thumbv4-none-agb/release/industry-advance"),
-        &format!("target/industry-advance.gba")])
-        .output().expect("failed to objcopy!");
-  
-  Ok(())
-}
-'''
-]
+dependencies = ["build"]
+command = "arm-none-eabi-objcopy"
+args = ["-O", "binary", "target/thumbv4-none-agb/release/industry-advance", "target/industry-advance.gba"]
 
 [tasks.test]
+dependencies = ["assemble"]
 command = "cargo"
-args = ["test", "--lib"]
+args = ["xtest", "--target", "thumbv4-none-agb.json"]
 
 [tasks.run]
 dependencies = ["build", "pack-rom"]

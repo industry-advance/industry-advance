@@ -12,7 +12,14 @@ let
     nixpkgs.cargo-xbuild
     nixpkgs.gcc-arm-embedded
     nixpkgs.cacert
+    nixpkgs.clippy
     grit
+
+    # Needed to run MGBA headlessly for tests
+    nixpkgs.xvfb_run
+    nixpkgs.xorg.xauth
+    nixpkgs.mesa
+    nixpkgs.bash
 
     # Reference implementation
     nixpkgs.mindustry

@@ -5,9 +5,10 @@ rust-nightly:
   stage: build
   image: git.mintendo-programmer.de:5050/gba/industry-advance:latest
   script:
-    - cargo make --verbose
-    # - cargo test --verbose
+    # Run tests
+    - cargo make test
+    # Create artifact
+    - cargo make
   artifacts:
     paths:
       - target/industry-advance.gba
-#  allow_failure: true

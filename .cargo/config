@@ -1,0 +1,6 @@
+[build]
+target = "thumbv4-none-agb.json"
+
+[target.thumbv4-none-agb]
+# runner = ["xvfb-run", "mgba", "-l", "-1"]
+runner = ["bash", "./runtests.sh"]
