@@ -17,6 +17,7 @@ use gba::mgba::{MGBADebug, MGBADebugLevel};
 
 mod ewram_alloc;
 mod game;
+mod gfx;
 mod map;
 mod testmap;
 
