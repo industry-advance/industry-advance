@@ -9,21 +9,24 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(const_in_array_repeat_expressions)]
 
 extern crate alloc;
 
 use ansi_rgb::{green, red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 
+mod assets;
 mod ewram_alloc;
 mod game;
-mod gfx;
 mod map;
+mod sprite;
 mod testmap;
 
 use core::fmt::Write;
 
 use game::Game;
+use sprite::HWSpriteAllocator;
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -51,8 +54,13 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     // Initialize the heap
     unsafe { ALLOCATOR.init(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE) };
 
+    // Initialize hardware sprite (object) management
+    let sprite_allocator = HWSpriteAllocator::new(&assets::sprites::palette::PAL);
+    sprite_allocator.init();
+
+    // Pack the various hardware component handlers into a single struct to make passing around easier
     // Start game loop
-    let mut game = Game::new();
+    let mut game = Game::new(sprite_allocator);
     game.run();
     loop {}
 }
