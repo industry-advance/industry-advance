@@ -10,27 +10,27 @@ import shutil
 import re
 from typing import List
 
-GFX_DIR = "src/gfx"
+GFX_DIR = "src/assets"
 SPRITE_DIR = "{}/sprites".format(GFX_DIR)
 
 
 def init_gfx_dir():
 
     # Remove the asset directory, as rebuilding assets may mess stuff up
-    shutil.rmtree(GFX_DIR)
+    if os.path.exists(GFX_DIR):
+        shutil.rmtree(GFX_DIR)
 
-    if not os.path.exists(GFX_DIR):
-        os.mkdir(GFX_DIR)
+    os.mkdir(GFX_DIR)
 
     # Paste in some Rust code to make it a proper module
     with open("{}/mod.rs".format(GFX_DIR), "w+") as f:
         f.write("pub(crate) mod sprites;")
 
-    if not os.path.exists(SPRITE_DIR):
-        os.mkdir(SPRITE_DIR)
+    os.mkdir(SPRITE_DIR)
 
     with open("{}/mod.rs".format(SPRITE_DIR), "w+") as f:
-        f.write("")
+        f.write("pub(crate) mod palette;\n")
+        f.write("pub(crate) mod sprites;")
 
 
 def convert_sprites():
@@ -58,7 +58,7 @@ def convert_sprites():
 
     # Run grit
     subprocess.run(
-        "grit {}  -fa -ftc -fh! -gT -pS -o{} -O{} -gB4".format(
+        "grit {}  -fa -ftc -fh! -gT -pS -o{} -O{} -gB8".format(
             all_sprite_paths, output_c_path, shared_data_c_path
         ),
         shell=True,
