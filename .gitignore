@@ -1,5 +1,5 @@
 /target
 **/*.rs.bk
 .mypy_cache
-src/gfx/
+src/assets/
 __pycache__/
