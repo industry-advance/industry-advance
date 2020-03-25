@@ -9,6 +9,12 @@ The quickest way to get started under Linux/macOS is to use [https://nixos.org/n
 Once set up, all that's needed is to run `cargo make run-qt` to build and start the game in mGBA. Alternatively, `cargo make debug-run` creates a debug build and launches it in mGBA, waiting for a GDB client to attach on port `2345`.
 `cargo make test` runs the tests.
 
+## Update CI build environment
+
+The docker container for CI is built with nix as well in order to ensure reproducibility between dev and test environments.
+
+To update the container, run `nix-build docker.nix`, then load the generated image tarball with `docker load -i /path/to/tarball` and push it to the image repository.
+
 ## Further reading
 
 * [A useful post on resource management for GBA games](https://www.gamasutra.com/view/feature/131491/gameboy_advance_resource_management.php?print=1)
