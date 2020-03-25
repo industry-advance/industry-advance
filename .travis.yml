@@ -1,0 +1,8 @@
+language: nix
+nix: 2.3.3
+jobs:
+  include:
+    - stage: "Build"
+      script: nix-shell --pure --run "cargo make"
+    - stage: "Test"
+      script: nix-shell --pure --run "cargo make test"
