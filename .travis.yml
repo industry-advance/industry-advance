@@ -3,6 +3,6 @@ nix: 2.3.3
 jobs:
   include:
     - stage: "Build"
-      script: nix-shell --pure --run "cargo make"
+      script: nix-shell --pure --run "cargo make assets && cargo make"
     - stage: "Test"
-      script: nix-shell --pure --run "cargo make test"
+      script: nix-shell --pure --run "cargo make assets && cargo make test"

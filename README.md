@@ -6,8 +6,10 @@ A GBA game more-or-less loosely intended as a demake of Mindustry (Changes plann
 
 The quickest way to get started under Linux/macOS is to use [https://nixos.org/nix/](Nix) as a dev environment. Just run `nix-shell` in the project directory.
 
-Once set up, all that's needed is to run `cargo make run-qt` to build and start the game in mGBA. Alternatively, `cargo make debug-run` creates a debug build and launches it in mGBA, waiting for a GDB client to attach on port `2345`.
-`cargo make test` runs the tests.
+Once set up, all that's needed is to run `cargo make assets && cargo make run-qt` to build assets, build the game and start it in mGBA. Alternatively, `cargo make assets && cargo make debug-run` creates a debug build and launches it in mGBA, waiting for a GDB client to attach on port `2345`.
+`cargo make assets && cargo make test` runs the tests.
+
+*NOTE:* If you change the Mindustry assets/the asset generation script you have to run `cargo make assets` manually. The process is manual because rebuilding them takes a long time.
 
 ## Update CI build environment
 

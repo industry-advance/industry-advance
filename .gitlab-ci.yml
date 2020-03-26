@@ -6,6 +6,7 @@ rust-nightly:
   image: git.mintendo-programmer.de:5050/gba/industry-advance:latest
   script:
     # Run tests
+    - cargo make assets
     - cargo make test
     # Create artifact
     - cargo make

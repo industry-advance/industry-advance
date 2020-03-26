@@ -10,17 +10,17 @@ dependencies = ["create-target-dir"]
 command = "arm-none-eabi-as"
 args = ["crt0.s", "-o", "target/crt0.o"]
 
-[tasks.gfx]
+[tasks.assets]
 command = "python3"
 args = ["./convertall.py"]
 
 [tasks.build]
-dependencies = ["assemble", "gfx"]
+dependencies = ["assemble"]
 command = "cargo"
 args = ["xbuild", "--target", "thumbv4-none-agb.json", "--release"]
 
 [tasks.build-debug]
-dependencies = ["assemble", "gfx"]
+dependencies = ["assemble"]
 command = "cargo"
 args = ["xbuild", "--target", "thumbv4-none-agb.json"]
 
@@ -30,7 +30,7 @@ command = "arm-none-eabi-objcopy"
 args = ["-O", "binary", "target/thumbv4-none-agb/release/industry-advance", "target/industry-advance.gba"]
 
 [tasks.test]
-dependencies = ["assemble", "gfx"]
+dependencies = ["assemble"]
 command = "cargo"
 args = ["xtest", "--target", "thumbv4-none-agb.json"]
 
