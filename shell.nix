@@ -8,6 +8,7 @@ let
     nixpkgs.python37Packages.flake8
     nixpkgs.python37Packages.pydocstyle
     nixpkgs.python37Packages.mypy
+    nixpkgs.python37Packages.ipython
 
     # Reference implementation
     nixpkgs.mindustry

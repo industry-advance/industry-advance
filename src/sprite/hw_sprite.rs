@@ -93,29 +93,16 @@ impl HWSprite {
     ///
     /// The sprite must be using 8bpp color mode and 1D mapping.
     ///
-    /// TODO: Reasonably pad smaller sprites
-    /// TODO: (so that the padding empty space is in the bottom-right, while the sprite itself is in the top-left,
-    /// TODO: as that's the corner OAM coordinates refer to)
-    ///
     /// If the slice is larger than the target size, the function panics.
     pub fn from_u32_slice(tile_fragments: &[u32], size: HWSpriteSize) -> HWSprite {
         let expected_tile_fragments: usize = (size.to_size_in_bytes() / 4).try_into().unwrap();
-        if tile_fragments.len() > expected_tile_fragments {
-            panic!("Attempt to create hardware sprite that is larger than the specified size");
+        if tile_fragments.len() != expected_tile_fragments {
+            panic!("Attempt to create hardware sprite with incorrect amount of data for size");
         }
 
-        // Copy and pad the tiles
-        let mut padded_tile_fragments = Vec::<u32>::new();
-        for tile_fragment in tile_fragments {
-            padded_tile_fragments.push(*tile_fragment);
-        }
-        for _ in 0..(expected_tile_fragments - tile_fragments.len()) {
-            padded_tile_fragments.push(0);
-        }
-
-        // Chunk them up into Tile8bpp
+        // Chunk the tiles up into Tile8bpp
         let mut tiles: Vec<Tile8bpp> = Vec::with_capacity(8);
-        for tile_as_u32_chunk in padded_tile_fragments.chunks_exact(16) {
+        for tile_as_u32_chunk in tile_fragments.chunks_exact(16) {
             let chunk_with_known_length: &[u32; 16] = tile_as_u32_chunk
                 .try_into()
                 .expect("This should not happen unless chunks_exact() is broken");

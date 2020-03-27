@@ -4,9 +4,14 @@
 # This script converts graphics to Rust source code.
 from c2rust import convert
 
+# This module provides functionality for padding sprites.
+import padsprite
+
 import os
+import pathlib
 import subprocess
 import shutil
+import tempfile
 import re
 from typing import List
 
@@ -53,8 +58,26 @@ def get_sprite_paths() -> List[str]:
     return sprite_paths
 
 
-def convert_sprites():
-    sprite_paths = get_sprite_paths()
+def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
+    out_paths: List[str] = list()
+    padded_sprite_dir: str = tempfile.TemporaryDirectory().name
+    for path in in_paths:
+        if padsprite.image_is_too_large(path):
+            print("WARNING: Sprite {} too large, skipping".format(path))
+            continue
+        if padsprite.needs_padding(path):
+            print("Padding sprite {}".format(path))
+            out_path: str = os.path.join(padded_sprite_dir, path)
+            pathlib.Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
+            padsprite.pad_sprite(path, out_path)
+            out_paths.append(out_path)
+        else:
+            out_paths.append(path)
+
+    return out_paths
+
+
+def convert_sprites(sprite_paths: List[str]):
 
     # For now, all sprites are assumed to be part of the same scene, and therefore share the same palette
     all_sprite_paths: str = ""
@@ -103,7 +126,9 @@ def convert_sprites():
 
 def main():
     init_gfx_dir()
-    convert_sprites()
+    sprite_paths = get_sprite_paths()
+    padded_sprite_paths = pad_sprites_if_needed(sprite_paths)
+    convert_sprites(padded_sprite_paths)
 
 
 if __name__ == "__main__":
