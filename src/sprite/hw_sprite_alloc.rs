@@ -6,14 +6,18 @@
 /// DISPCNT also has to be set for 1D mapping.
 ///
 /// Heavily inspired by this article: https://www.gamasutra.com/view/feature/131491/gameboy_advance_resource_management.php?print=1
-/// TODO: Consider upstreaming to GBA crate
-/// TODO: Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
-use core::mem;
-
+///
+/// # TODO:
+/// Consider upstreaming to GBA crate.
+///
+/// Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
 use core::convert::TryInto;
 
 use alloc::boxed::Box;
 use gba::{oam, palram, vram, Color};
+
+#[cfg(debug_assertions)]
+use gba::debug;
 
 use super::HWSprite;
 
@@ -37,22 +41,22 @@ enum SpriteBlockState {
 /// this struct is UB.
 ///
 /// Using more than one HWSpriteAllocator is also UB.
-/// TODO: Enforce singleton via type system
 pub(crate) struct HWSpriteAllocator {
-    allocation_map: Box<[SpriteBlockState; 1024]>, // Allocated on the heap to save valuable IWRAM
+    allocation_map: Box<[SpriteBlockState; 1024]>, // List of 32 byte regions in object VRAM
     palette: Box<[Color; 256]>,
-    oam_free_list: Box<[bool; 128]>,
+    oam_free_list: Box<[bool; 128]>, // List keeping track of which slots in OAM are free
 }
 
 impl HWSpriteAllocator {
     /// Create a new hardware sprite allocator for sprites with the given palette.
     pub fn new(palette: &[u16]) -> HWSpriteAllocator {
-        // TODO: This transmutation should be replaced with an API to load u16 as color in the gba crate
+        // Cast to palette color type
         let mut palette_as_gba_colors: [Color; 256] = [Color::default(); 256];
         for (i, color) in palette.iter().enumerate() {
-            let color_as_gba_color: Color = unsafe { mem::transmute::<u16, Color>(*color) };
+            let color_as_gba_color: Color = Color(*color);
             palette_as_gba_colors[i] = color_as_gba_color;
         }
+
         let entries = Box::new([SpriteBlockState::Unused; 1024]);
         let pal = Box::new(palette_as_gba_colors);
         let oam_free_list = Box::new([false; 128]);
@@ -81,17 +85,16 @@ impl HWSpriteAllocator {
     /// This will panic if insufficient space is available or too many sprites are already active.
     pub fn alloc(&mut self, sprite: HWSprite) -> HWSpriteHandle {
         // Find first spot with enough contiguous free blocks to hold the sprite
-        let num_blocks = sprite.size.to_num_of_32_byte_blocks();
+        let num_32b_blocks = sprite.size.to_num_of_32_byte_blocks();
         let begin_index = self
-            .find_contiguous_free_blocks(num_blocks)
+            .find_contiguous_free_blocks(num_32b_blocks)
             .expect("No contiguous free block of VRAM available to allocate hardware sprite");
 
-        // TODO: Copy the sprite into the matching area of VRAM
-        // A single 8bpp tile is 64 bytes large while a block managed by the allocator
-        // is 32 bytes large, therefore we calculate
-        // the offset into VRAM as block_index / 2 +
-        // FIXME: The current allocator design can allocate an 8bpp tile on an incorrect boundary.
-        // To fix this, only even indices should be used for these tiles.
+        #[cfg(debug_assertions)]
+        debug!(
+            "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
+            begin_index, num_blocks
+        );
 
         // Sprites are stored across 2 charblocks.
         let mut charblock_index: usize = 0xDD; // Illegal values, will be replaced below
@@ -101,7 +104,7 @@ impl HWSpriteAllocator {
             slot_in_charblock = begin_index / 2;
         } else {
             charblock_index = UPPER_SPRITE_BLOCK_AS_CHARBLOCK;
-            slot_in_charblock = (begin_index / 2) - 512;
+            slot_in_charblock = (begin_index - 512) / 2;
         }
         let mut charblock = vram::get_8bpp_character_block(charblock_index);
         // FIXME: Handle case where sprite is in boundary between 2 charblocks
@@ -113,14 +116,14 @@ impl HWSpriteAllocator {
         let oam_slot = self.find_free_oam_slot();
         self.oam_free_list[oam_slot] = true;
         let (size, shape) = sprite.size.to_obj_size_and_shape();
-        let starting_vram_tile_id: u16 = ((charblock_index * 256) + slot_in_charblock)
+        let starting_vram_tile_id: u16 = ((charblock_index * 256) + (slot_in_charblock * 2))
             .try_into()
             .unwrap();
         self.prepare_oam_slot(starting_vram_tile_id, oam_slot, size, shape);
 
         // Mark blocks as occupied
         self.allocation_map[begin_index] = SpriteBlockState::Used;
-        for i in 1..=num_blocks {
+        for i in 1..num_32b_blocks {
             self.allocation_map[begin_index + i] = SpriteBlockState::Continue;
         }
 
@@ -217,6 +220,7 @@ impl HWSpriteAllocator {
         self.oam_free_list[handle.oam_slot] = false;
     }
 }
+
 /// A handle to a hardware sprite allocated in VRAM/OAM.
 pub(crate) struct HWSpriteHandle {
     starting_block: usize,
