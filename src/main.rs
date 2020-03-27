@@ -77,6 +77,9 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 // Custom testing framework (the standard one can't be used because it depends on std)
 #[cfg(test)]
 fn test_runner(tests: &[&dyn Fn()]) {
+    // Prepare memory allocator for tests that require dynamic allocation
+    unsafe { ALLOCATOR.init(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE) };
+
     let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
     writeln!(writer, "Running {} tests", tests.len())
         .expect("Failed to write to MGBA debug message register");
