@@ -41,7 +41,8 @@ impl Map<'_> {
         const MODE: DisplayControlSetting = DisplayControlSetting::new()
             .with_mode(DisplayMode::Mode0)
             // We use background layer 0 for the map
-            .with_bg0(true);
+            .with_bg0(true)
+            .with_obj(true);
         DISPCNT.write(MODE);
 
         // Copy palette into PALRAM

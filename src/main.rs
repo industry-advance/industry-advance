@@ -17,10 +17,13 @@ use ansi_rgb::{green, red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 
 mod assets;
+mod components;
+mod entities;
 mod ewram_alloc;
 mod game;
 mod map;
 mod sprite;
+mod systems;
 mod testmap;
 
 use core::fmt::Write;
@@ -58,9 +61,9 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     let sprite_allocator = HWSpriteAllocator::new(&assets::sprites::palette::PAL);
     sprite_allocator.init();
 
-    // Pack the various hardware component handlers into a single struct to make passing around easier
-    // Start game loop
     let mut game = Game::new(sprite_allocator);
+    game.init();
+    // Start game loop
     game.run();
     loop {}
 }

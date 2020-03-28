@@ -17,3 +17,4 @@ voladdress = "*"
 typenum = "*"
 linked_list_allocator = {version = "*", default_features = false} # Spinlock unusable due to lack of HW support for atomics
 ansi_rgb = "*"
+tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
