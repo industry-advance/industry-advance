@@ -15,7 +15,7 @@ pub(crate) fn add_player(
         .with(SpriteComponent::init(
             sprite_alloc,
             &DART_SHIP_TILES,
-            HWSpriteSize::SixtyFourBySixtyFour,
+            HWSpriteSize::ThirtyTwoByThirtyTwo,
         ))?
         .with(movement_component)?
         .finalise()?;

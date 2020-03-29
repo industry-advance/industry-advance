@@ -4,9 +4,8 @@
 # This script converts graphics to Rust source code.
 from c2rust import convert
 
-# This module provides functionality for padding sprites.
-import padsprite
-
+# This module provides functionality for modifying (padding, resizing) sprites.
+import modifysprite
 import os
 import pathlib
 import subprocess
@@ -19,6 +18,8 @@ from typing import List
 SPRITES_IN_DIR = "Mindustry/core/assets-raw/sprites/"
 # Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need)
 SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
+# Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
+SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
 # Directories to emit Rust source code to
 ASSETS_OUT_DIR = "src/assets"
@@ -54,22 +55,45 @@ def get_sprite_paths() -> List[str]:
         for name in files:
             if name.endswith(".png"):
                 sprite_paths.append(os.path.join(root, name))
-    print(sprite_paths)
     return sprite_paths
+
+
+def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
+    out_paths: List[str] = list()
+    resized_sprite_dir: str = tempfile.TemporaryDirectory().name
+    for path in in_paths:
+        was_resized = False
+        # Check whether path is child path of dir that requires resizing
+        for subdir_to_resize in SPRITES_RESIZE_SUBDIRS:
+            if os.path.realpath(path).startswith(
+                os.path.realpath(os.path.join(SPRITES_IN_DIR, subdir_to_resize))
+            ):
+                out_path: str = os.path.join(resized_sprite_dir, path)
+                pathlib.Path(os.path.dirname(out_path)).mkdir(
+                    parents=True, exist_ok=True
+                )
+                print("Resizing sprite {}".format(path))
+                modifysprite.halve_resolution(path, out_path)
+                out_paths.append(out_path)
+                was_resized = True
+                break
+        if not was_resized:
+            out_paths.append(path)
+    return out_paths
 
 
 def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     padded_sprite_dir: str = tempfile.TemporaryDirectory().name
     for path in in_paths:
-        if padsprite.image_is_too_large(path):
+        if modifysprite.image_is_too_large(path):
             print("WARNING: Sprite {} too large, skipping".format(path))
             continue
-        if padsprite.needs_padding(path):
+        if modifysprite.needs_padding(path):
             print("Padding sprite {}".format(path))
             out_path: str = os.path.join(padded_sprite_dir, path)
             pathlib.Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
-            padsprite.pad_sprite(path, out_path)
+            modifysprite.pad_sprite(path, out_path)
             out_paths.append(out_path)
         else:
             out_paths.append(path)
@@ -127,7 +151,8 @@ def convert_sprites(sprite_paths: List[str]):
 def main():
     init_gfx_dir()
     sprite_paths = get_sprite_paths()
-    padded_sprite_paths = pad_sprites_if_needed(sprite_paths)
+    rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
+    padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
 
 

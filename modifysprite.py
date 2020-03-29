@@ -9,10 +9,12 @@ from PIL import Image
 from typing import Tuple, List
 
 SPRITE_SIZES: List[Tuple[int, int]] = [(8, 8), (8, 16), (16, 8), (16, 16), (32, 8), (8, 32), (16, 32), (32, 16), (32, 32), (64, 32), (32, 64), (64, 64)]
-"""
-This module calculates the next-largest applicable GBA sprite size for the image, if any.
-"""
 
+
+def halve_resolution(in_path: str, out_path: str):
+    img = Image.open(in_path)
+    x_size, y_size = img.size
+    img.resize((x_size // 2, y_size // 2), Image.NEAREST).save(out_path)
 
 def image_is_too_large(image_path: str) -> bool:
     img = Image.open(image_path)
