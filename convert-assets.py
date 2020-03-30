@@ -25,6 +25,11 @@ SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 ASSETS_OUT_DIR = "src/assets"
 SPRITES_OUT_DIR = "{}/sprites".format(ASSETS_OUT_DIR)
 
+# Same for maps
+# Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
+MAPS_IN_DIR = "testmaps"
+MAPS_OUT_FILE = "{}/maps.rs".format(ASSETS_OUT_DIR)
+
 
 def init_gfx_dir():
 
@@ -38,6 +43,7 @@ def init_gfx_dir():
     with open("{}/mod.rs".format(ASSETS_OUT_DIR), "w+") as f:
         f.write("#[allow(dead_code)]")  # So rustc doesn't nag about unused assets
         f.write("pub(crate) mod sprites;")
+        f.write("pub(crate) mod maps;")
 
     os.mkdir(SPRITES_OUT_DIR)
 
@@ -148,12 +154,43 @@ def convert_sprites(sprite_paths: List[str]):
         f.writelines(modified_lines)
 
 
+def get_map_paths() -> List[str]:
+    # Paths to sprites
+    map_paths: List[str] = list()
+
+    for root, dirs, files in os.walk(MAPS_IN_DIR, topdown=True):
+        for name in files:
+            if name.endswith(".png"):
+                map_paths.append(os.path.join(root, name))
+    return map_paths
+
+
+def convert_maps(map_paths: List[str]):
+    all_map_paths: str = ""
+    for map_path in map_paths:
+        all_map_paths = all_map_paths + " " + map_path
+    output_c_path = "{}.c".format(os.path.splitext(MAPS_OUT_FILE)[0])
+
+    # Run grit
+    subprocess.run(
+        "grit {} -ftc -fh! -gT -m -o{} -gB4".format(all_map_paths, output_c_path),
+        shell=True,
+        check=True,
+    )
+
+    # Convert to Rust code
+    convert(output_c_path, MAPS_OUT_FILE)
+
+
 def main():
     init_gfx_dir()
     sprite_paths = get_sprite_paths()
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
+
+    map_paths = get_map_paths()
+    convert_maps(map_paths)
 
 
 if __name__ == "__main__":
