@@ -12,6 +12,10 @@ let
 
     # Reference implementation
     nixpkgs.mindustry
+    # Mindustry build deps
+    nixpkgs.jre
+    nixpkgs.gradle_5
+    nixpkgs.perl
 
     # For testing github actions locally
     nixpkgs.act
