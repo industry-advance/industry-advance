@@ -1,16 +1,16 @@
+use crate::assets::maps::*;
+use crate::assets::sprites;
+
+use crate::background::SCREENBLOCK_SIZE_IN_U16;
 use crate::components::SpriteComponent;
 use crate::entities;
 use crate::map::Map;
-use crate::sprite::{HWSprite, HWSpriteAllocator, HWSpriteSize};
+use crate::sprite::HWSpriteAllocator;
 use crate::systems::{InputSystem, MovementSystem};
-use alloc::vec::Vec;
 
-use gba::{
-    io::background::{BGSize, BackgroundControlSetting, BG0CNT},
-    io::display::{DisplayControlSetting, DisplayMode, DISPCNT, VBLANK_SCANLINE, VCOUNT},
-    mgba, vram,
-};
+use alloc::{vec, vec::Vec}; // One is a macro, the other a namespace
 
+use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
 use tiny_ecs::Entities;
 
 pub(crate) struct Game {
@@ -22,19 +22,7 @@ pub(crate) struct Game {
 }
 
 impl Game {
-    pub fn new(sprite_alloc: HWSpriteAllocator) -> Game {
-        // Create a new ECS
-        let e = Entities::new(Some(256), Some(24));
-        return Game {
-            sprite_alloc: sprite_alloc,
-            map: Map::new_testmap(),
-            entities: e,
-            live_entity_ids: Vec::with_capacity(128),
-            input_system: InputSystem::init(),
-        };
-    }
     pub(crate) fn run(&mut self) {
-        self.init();
         loop {
             self.update();
             // For now, tick once every vblank
@@ -42,25 +30,40 @@ impl Game {
             while VCOUNT.read() >= VBLANK_SCANLINE {}
         }
     }
-    pub fn init(&mut self) {
-        // Configure video mode
-        const MODE: DisplayControlSetting = DisplayControlSetting::new()
-            .with_mode(DisplayMode::Mode0)
-            .with_bg0(true)
-            .with_obj(true)
-            .with_oam_memory_1d(true);
-        DISPCNT.write(MODE);
+
+    /// Creates and initializes a new game.
+    pub fn init() -> Game {
+        // Initialize hardware sprite management
+        let mut sprite_allocator = HWSpriteAllocator::new(&sprites::palette::PAL);
+        sprite_allocator.init();
+
+        // Initialize the background
+        let tilemaps: Vec<&[u16; SCREENBLOCK_SIZE_IN_U16]> = vec![&maps::TESTMAP_MAP];
+        let map = Map::new_map(&palette::TESTMAP_PAL, 8, 8, &maps::TESTMAP_TILES, tilemaps);
+
+        // Initialize the ECS
+        let mut e = Entities::new(Some(256), Some(24));
+        let mut live_entity_ids = Vec::new();
 
         // Initialize the player entity
-        let player_id = entities::add_player(&mut self.entities, &mut self.sprite_alloc)
+        let player_id = entities::add_player(&mut e, &mut sprite_allocator)
             .expect("Failed to initialize player entity");
-        self.live_entity_ids.push(player_id);
+        live_entity_ids.push(player_id);
         // Put the player at the center of the screen
-        let mut components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
+        let mut components = e.borrow_mut::<SpriteComponent>().unwrap();
         let mut player_sprite_handle = components.get_mut(player_id).unwrap().get_handle();
         player_sprite_handle.set_visibility(true);
         player_sprite_handle.set_x_pos(96);
         player_sprite_handle.set_y_pos(64);
+        drop(components);
+
+        return Game {
+            sprite_alloc: sprite_allocator,
+            map: map,
+            entities: e,
+            live_entity_ids: live_entity_ids,
+            input_system: InputSystem::init(),
+        };
     }
 
     fn update(&mut self) {

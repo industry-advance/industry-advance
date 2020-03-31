@@ -99,8 +99,6 @@ dependencies = [
  "gba 0.4.0-pre (git+https://gitlab.spline.inf.fu-berlin.de/gba/gba?branch=frickel)",
  "linked_list_allocator 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny_ecs 0.19.4 (git+https://gitlab.com/casept/tiny_ecs?branch=no_std)",
- "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "voladdress 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -188,11 +186,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "voladdress"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -222,5 +215,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum vec_map 0.8.1 (git+https://github.com/casept/vec-map?branch=no_std)" = "<none>"
 "checksum version_check 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "078775d0255232fb988e6fccf26ddc9d1ac274299aaedcedce21c6f72cc533ce"
 "checksum voladdress 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "240285ab14a51c73796628b33e0df41167efd5d230ce5ffd6f3bc63fc4f8010d"
-"checksum voladdress 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "91790a8b3909597b3425774ca6666220404291d09df7219c79951f09581b3143"
 "checksum wasi 0.9.0+wasi-snapshot-preview1 (registry+https://github.com/rust-lang/crates.io-index)" = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"

@@ -6,6 +6,10 @@ from c2rust import convert
 
 # This module provides functionality for modifying (padding, resizing) sprites.
 import modifysprite
+
+# This module provides functionality for splitting maps.
+import splitmap
+
 import os
 import pathlib
 import subprocess
@@ -28,7 +32,7 @@ SPRITES_OUT_DIR = "{}/sprites".format(ASSETS_OUT_DIR)
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
 MAPS_IN_DIR = "testmaps"
-MAPS_OUT_FILE = "{}/maps.rs".format(ASSETS_OUT_DIR)
+MAPS_OUT_DIR = "{}/maps".format(ASSETS_OUT_DIR)
 
 
 def init_gfx_dir():
@@ -50,6 +54,12 @@ def init_gfx_dir():
     with open("{}/mod.rs".format(SPRITES_OUT_DIR), "w+") as f:
         f.write("pub(crate) mod palette;\n")
         f.write("pub(crate) mod sprites;")
+
+    os.mkdir(MAPS_OUT_DIR)
+
+    with open("{}/mod.rs".format(MAPS_OUT_DIR), "w+") as f:
+        f.write("pub(crate) mod palette;\n")
+        f.write("pub(crate) mod maps;")
 
 
 def get_sprite_paths() -> List[str]:
@@ -165,21 +175,43 @@ def get_map_paths() -> List[str]:
     return map_paths
 
 
+"""
+As the GBA doesn't support infinite-sized maps, this function
+splits them into 32x32 tile (256x256 px) chunks.
+"""
+
+
+def split_maps_into_chunks(in_paths: List[str]) -> List[str]:
+    out_paths: List[str] = list()
+    for path in in_paths:
+        split_map_dir: str = tempfile.TemporaryDirectory().name
+        split_paths = splitmap.split_map(path, split_map_dir)
+        out_paths.extend(split_paths)
+
+    return out_paths
+
+
 def convert_maps(map_paths: List[str]):
     all_map_paths: str = ""
     for map_path in map_paths:
         all_map_paths = all_map_paths + " " + map_path
-    output_c_path = "{}.c".format(os.path.splitext(MAPS_OUT_FILE)[0])
+    shared_data_c_path = "{}/palette.c".format(MAPS_OUT_DIR)
+    output_c_path = "{}/maps.c".format(MAPS_OUT_DIR)
+    shared_data_rs_path = "{}/palette.rs".format(MAPS_OUT_DIR)
+    output_rs_path = "{}/maps.rs".format(MAPS_OUT_DIR)
 
     # Run grit
     subprocess.run(
-        "grit {} -ftc -fh! -gT -m -o{} -gB4".format(all_map_paths, output_c_path),
+        "grit {} -ftc -fh! -fa -gT -pS -m -o{} -O{} -gB4".format(
+            all_map_paths, output_c_path, shared_data_c_path
+        ),
         shell=True,
         check=True,
     )
 
     # Convert to Rust code
-    convert(output_c_path, MAPS_OUT_FILE)
+    convert(shared_data_c_path, shared_data_rs_path)
+    convert(output_c_path, output_rs_path)
 
 
 def main():
@@ -190,7 +222,8 @@ def main():
     convert_sprites(padded_sprite_paths)
 
     map_paths = get_map_paths()
-    convert_maps(map_paths)
+    split_map_paths = split_maps_into_chunks(map_paths)
+    convert_maps(split_map_paths)
 
 
 if __name__ == "__main__":
