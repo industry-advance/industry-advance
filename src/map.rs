@@ -26,7 +26,7 @@ impl Map<'_> {
             }
         }
         // TODO: Pass through center_x and center_y
-        let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette, 1024, 1024);
+        let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
         return Map { bg: bg };
     }
 }

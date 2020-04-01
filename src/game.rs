@@ -13,6 +13,7 @@ use alloc::{vec, vec::Vec}; // One is a macro, the other a namespace
 use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
 use tiny_ecs::Entities;
 
+#[allow(dead_code)] // Some struct fields not used after construction right now, remove once changed
 pub(crate) struct Game {
     sprite_alloc: HWSpriteAllocator,
     map: Map<'static>,

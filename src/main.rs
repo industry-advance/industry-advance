@@ -67,7 +67,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
 
 // Heap allocator config
 #[global_allocator]
-static ALLOCATOR: ewram_alloc::RaceyHeap = unsafe { ewram_alloc::RaceyHeap::empty() };
+static ALLOCATOR: ewram_alloc::RaceyHeap = ewram_alloc::RaceyHeap::empty();
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
