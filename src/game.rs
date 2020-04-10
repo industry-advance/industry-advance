@@ -40,7 +40,7 @@ impl Game {
 
         // Initialize the background
         let tilemaps: Vec<&[u16; SCREENBLOCK_SIZE_IN_U16]> = vec![&maps::TESTMAP_MAP];
-        let map = Map::new_map(&palette::TESTMAP_PAL, 8, 8, &maps::TESTMAP_TILES, tilemaps);
+        let map = Map::new_map(&palette::TESTMAP_PAL, 1, 1, &maps::TESTMAP_TILES, tilemaps);
 
         // Initialize the ECS
         let mut e = Entities::new(Some(256), Some(24));

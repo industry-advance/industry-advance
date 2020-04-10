@@ -185,6 +185,7 @@ def split_maps_into_chunks(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     for path in in_paths:
         split_map_dir: str = tempfile.TemporaryDirectory().name
+        pathlib.Path(split_map_dir).mkdir(parents=True, exist_ok=True)
         split_paths = splitmap.split_map(path, split_map_dir)
         out_paths.extend(split_paths)
 
@@ -199,11 +200,13 @@ def convert_maps(map_paths: List[str]):
     output_c_path = "{}/maps.c".format(MAPS_OUT_DIR)
     shared_data_rs_path = "{}/palette.rs".format(MAPS_OUT_DIR)
     output_rs_path = "{}/maps.rs".format(MAPS_OUT_DIR)
+    tileset_c_path = "{}/tileset.c".format(MAPS_OUT_DIR)
+    tileset_rs_path = "{}/tileset.rs".format(MAPS_OUT_DIR)
 
     # Run grit
     subprocess.run(
-        "grit {} -ftc -fh! -fa -gT -pS -m -o{} -O{} -gB4".format(
-            all_map_paths, output_c_path, shared_data_c_path
+        "grit {} -ftc -fh! -fa -gT -pS -m -o{} -O{} -fx{} -gB4".format(
+            all_map_paths, output_c_path, shared_data_c_path, tileset_c_path
         ),
         shell=True,
         check=True,
@@ -212,6 +215,7 @@ def convert_maps(map_paths: List[str]):
     # Convert to Rust code
     convert(shared_data_c_path, shared_data_rs_path)
     convert(output_c_path, output_rs_path)
+    convert(tileset_c_path, tileset_rs_path)
 
 
 def main():

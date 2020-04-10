@@ -20,12 +20,11 @@ impl Map<'_> {
         let mut two_d_indexed_tilemaps: Vec<Vec<&[u16; SCREENBLOCK_SIZE_IN_U16]>> =
             Vec::with_capacity(x);
         for i in 0..x {
-            two_d_indexed_tilemaps[x] = Vec::with_capacity(y);
+            two_d_indexed_tilemaps.push(Vec::with_capacity(y));
             for j in 0..y {
-                two_d_indexed_tilemaps[x][y] = tilemaps[i * x + j];
+                two_d_indexed_tilemaps[i].push(tilemaps[i * x + j]);
             }
         }
-        // TODO: Pass through center_x and center_y
         let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
         return Map { bg: bg };
     }
