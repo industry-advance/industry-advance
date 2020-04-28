@@ -1,11 +1,17 @@
-use crate::assets::sprites::palette::PAL;
+use crate::FS;
+use gbfs_rs::FilenameString;
 
 // TODO: Write tests
 
 /// Ensure initializing the object works
 #[test_case]
 fn test_init() {
-    let mut sprite_allocator = super::HWSpriteAllocator::new(&PAL);
+    // Load palette from filesystem
+    let pal = FS
+        .get_file_by_name(FilenameString::try_from_str("sprite_sharedPal").unwrap())
+        .unwrap()
+        .to_u16_vec();
+    let mut sprite_allocator = super::HWSpriteAllocator::new(&pal);
     sprite_allocator.init();
 }
 

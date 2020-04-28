@@ -93,7 +93,7 @@ impl HWSpriteAllocator {
         #[cfg(debug_assertions)]
         debug!(
             "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
-            begin_index, num_blocks
+            begin_index, num_32b_blocks
         );
 
         // Sprites are stored across 2 charblocks.
