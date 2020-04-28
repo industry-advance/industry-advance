@@ -9,7 +9,7 @@ use gba::{palram, vram, Color};
 const SCREEN_HEIGHT: usize = 160;
 const SCREEN_WIDTH: usize = 240;
 
-pub const SCREENBLOCK_SIZE_IN_U16: usize = 32 * 32 * 1;
+pub const SCREENBLOCK_SIZE_IN_U8: usize = 32 * 32 * 2;
 const TILE_SIZE_IN_PX: usize = 8;
 const BACKING_MAP_LENGTH_IN_TILES: usize = 32;
 
@@ -35,8 +35,7 @@ const CHARBLOCK_SIZE_BYTES: usize = 16 * 1024;
 /// This code assumes that it's in sole control of the display control register's background and size settings,
 /// as well as all charblocks and screenblocks in VRAM and background PALRAM.
 pub(crate) struct LargeBackground<'a> {
-    tiles: &'a [u32],
-    backing_tilemaps: Vec<Vec<&'a [u16; SCREENBLOCK_SIZE_IN_U16]>>, // 2D map of
+    backing_tilemaps: Vec<Vec<&'a [u8]>>, // 2D map of
     // Absolute coordinates of the current top-left corner of the screen on the map.
     // Coordinate system starts at top-left (0,0) of the map.
     curr_x: i32,
@@ -63,9 +62,9 @@ impl LargeBackground<'_> {
     /// center_x and center_y are the coordinates for where to initially place the center of the displayed area.
     /// The coordinate system starts at the top-left corner.
     pub(crate) fn init<'a>(
-        tiles: &'a [u32],
-        backing_tilemaps: Vec<Vec<&'a [u16; SCREENBLOCK_SIZE_IN_U16]>>,
-        palette: &'a [u16],
+        tiles: Vec<u32>,
+        backing_tilemaps: Vec<Vec<&'a [u8]>>,
+        palette: Vec<u16>,
     ) -> LargeBackground<'a> {
         // Ensure we have at least 1 backing tilemap
         if backing_tilemaps.len() < 1 {
@@ -77,7 +76,6 @@ impl LargeBackground<'_> {
         }
 
         let mut lbg: LargeBackground<'a> = LargeBackground {
-            tiles: tiles,
             backing_tilemaps: backing_tilemaps,
             curr_x: 0,
             curr_y: 0,

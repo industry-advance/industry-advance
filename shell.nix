@@ -23,5 +23,6 @@ let
     # Debugging
     nixpkgs.gdb-multitarget
     nixpkgs.lldb_9
+    nixpkgs.xawtv # We use the RIFF file viewer
   ];
 in nixpkgs.mkShell { buildInputs = shellPackages; }

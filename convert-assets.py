@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-
-# This script converts graphics to Rust source code.
-from c2rust import convert
-
 # This module provides functionality for modifying (padding, resizing) sprites.
 import modifysprite
 
@@ -13,9 +9,7 @@ import splitmap
 import os
 import pathlib
 import subprocess
-import shutil
 import tempfile
-import re
 from typing import List
 
 # Directory containing sprites to be processed
@@ -25,41 +19,9 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
-# Directories to emit Rust source code to
-ASSETS_OUT_DIR = "src/assets"
-SPRITES_OUT_DIR = "{}/sprites".format(ASSETS_OUT_DIR)
-
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
 MAPS_IN_DIR = "testmaps"
-MAPS_OUT_DIR = "{}/maps".format(ASSETS_OUT_DIR)
-
-
-def init_gfx_dir():
-
-    # Remove the asset directory, as rebuilding assets may mess stuff up
-    if os.path.exists(ASSETS_OUT_DIR):
-        shutil.rmtree(ASSETS_OUT_DIR)
-
-    os.mkdir(ASSETS_OUT_DIR)
-
-    # Paste in some Rust code to make it a proper module
-    with open("{}/mod.rs".format(ASSETS_OUT_DIR), "w+") as f:
-        f.write("#[allow(dead_code)]")  # So rustc doesn't nag about unused assets
-        f.write("pub(crate) mod sprites;")
-        f.write("pub(crate) mod maps;")
-
-    os.mkdir(SPRITES_OUT_DIR)
-
-    with open("{}/mod.rs".format(SPRITES_OUT_DIR), "w+") as f:
-        f.write("pub(crate) mod palette;\n")
-        f.write("pub(crate) mod sprites;")
-
-    os.mkdir(MAPS_OUT_DIR)
-
-    with open("{}/mod.rs".format(MAPS_OUT_DIR), "w+") as f:
-        f.write("pub(crate) mod palette;\n")
-        f.write("pub(crate) mod maps;")
 
 
 def get_sprite_paths() -> List[str]:
@@ -124,44 +86,14 @@ def convert_sprites(sprite_paths: List[str]):
     for sprite_path in sprite_paths:
         all_sprite_paths = all_sprite_paths + " " + sprite_path
 
-    shared_data_c_path = "{}/palette.c".format(SPRITES_OUT_DIR)
-    output_c_path = "{}/sprites.c".format(SPRITES_OUT_DIR)
-    shared_data_rs_path = "{}/palette.rs".format(SPRITES_OUT_DIR)
-    output_rs_path = "{}/sprites.rs".format(SPRITES_OUT_DIR)
-
     # Run grit
     subprocess.run(
-        "grit {}  -fa -ftc -fh! -gT -pS -o{} -O{} -gB8".format(
-            all_sprite_paths, output_c_path, shared_data_c_path
+        "grit {}  -fa -ftg -fh! -gT -pS -S sprite_shared -oassets -Oassets -gB8".format(
+            all_sprite_paths
         ),
         shell=True,
         check=True,
     )
-
-    # Convert to Rust code
-    convert(shared_data_c_path, shared_data_rs_path)
-    convert(output_c_path, output_rs_path)
-
-    # Grit is misleading in that it names the palette array after the first file passed to it,
-    # despite it containing colors for all files.
-    # Therefore, we fix that here with some regex magic.
-    exp = re.compile(r"(const.*PAL)", flags=re.MULTILINE)
-
-    lines: List[str] = list()
-    with open(shared_data_rs_path, "r") as f:
-        # Read in entire file, modify, then overwrite
-        for line in f:
-            lines.append(line)
-
-    modified_lines: List[str] = list()
-    for line in lines:
-        if exp.search(line):
-            modified_lines.append(exp.sub("const PAL", line))
-        else:
-            modified_lines.append(line)
-
-    with open(shared_data_rs_path, "w+") as f:
-        f.writelines(modified_lines)
 
 
 def get_map_paths() -> List[str]:
@@ -196,35 +128,25 @@ def convert_maps(map_paths: List[str]):
     all_map_paths: str = ""
     for map_path in map_paths:
         all_map_paths = all_map_paths + " " + map_path
-    shared_data_c_path = "{}/palette.c".format(MAPS_OUT_DIR)
-    output_c_path = "{}/maps.c".format(MAPS_OUT_DIR)
-    shared_data_rs_path = "{}/palette.rs".format(MAPS_OUT_DIR)
-    output_rs_path = "{}/maps.rs".format(MAPS_OUT_DIR)
-    tileset_c_path = "{}/tileset.c".format(MAPS_OUT_DIR)
-    tileset_rs_path = "{}/tileset.rs".format(MAPS_OUT_DIR)
 
     # Run grit
     subprocess.run(
-        "grit {} -ftc -fh! -fa -gT -pS -m -o{} -O{} -fx{} -gB4".format(
-            all_map_paths, output_c_path, shared_data_c_path, tileset_c_path
+        "grit {} -ftg -fh! -fa -gT -gS -pS -m -oassets -Oassets -S map_shared -gB4".format(
+            all_map_paths
         ),
         shell=True,
         check=True,
     )
 
-    # Convert to Rust code
-    convert(shared_data_c_path, shared_data_rs_path)
-    convert(output_c_path, output_rs_path)
-    convert(tileset_c_path, tileset_rs_path)
-
 
 def main():
-    init_gfx_dir()
+    print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
 
+    print("----Converting maps...----")
     map_paths = get_map_paths()
     split_map_paths = split_maps_into_chunks(map_paths)
     convert_maps(split_map_paths)

@@ -74,7 +74,7 @@ impl HWSpriteAllocator {
     /// Any other code manipulating the sprite palette after
     /// this function is called will lead to graphical glitches.
     pub fn init(&self) {
-        let mut pal_block = palram::PALRAM_OBJ;
+        let pal_block = palram::PALRAM_OBJ;
         for (i, color) in self.palette.iter().enumerate() {
             pal_block.index(i).write(*color);
         }
@@ -106,7 +106,7 @@ impl HWSpriteAllocator {
             charblock_index = UPPER_SPRITE_BLOCK_AS_CHARBLOCK;
             slot_in_charblock = (begin_index - 512) / 2;
         }
-        let mut charblock = vram::get_8bpp_character_block(charblock_index);
+        let charblock = vram::get_8bpp_character_block(charblock_index);
         // FIXME: Handle case where sprite is in boundary between 2 charblocks
         for (i, tile) in sprite.tiles.into_iter().enumerate() {
             charblock.index(slot_in_charblock + i).write(tile);

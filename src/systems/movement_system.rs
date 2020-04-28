@@ -8,13 +8,13 @@ pub struct MovementSystem {}
 
 impl MovementSystem {
     pub fn tick(ecs: &mut Entities, live_entities: &Vec<usize>) -> Result<(), ECSError> {
-        let mut movables = ecs.borrow_mut::<MovementComponent>().unwrap();
+        let movables = ecs.borrow_mut::<MovementComponent>().unwrap();
         let mut sprites = ecs.borrow_mut::<SpriteComponent>().unwrap();
         for id in live_entities {
             if ecs.entity_contains::<MovementComponent>(*id) {
                 let e_movement: &MovementComponent = movables.get(*id).unwrap();
                 if ecs.entity_contains::<SpriteComponent>(*id) {
-                    let mut e_sprite: &mut SpriteComponent = sprites.get_mut(*id).unwrap();
+                    let e_sprite: &mut SpriteComponent = sprites.get_mut(*id).unwrap();
                     if e_movement.x_velocity != 0 || e_movement.y_velocity != 0 {
                         let mut sprite_attrs = e_sprite.get_handle().read_obj_attributes();
                         // Modify X position based on velocity

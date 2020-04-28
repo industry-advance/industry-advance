@@ -10,9 +10,9 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-# TODO: Revert to mintendo-programmer server once certificate is fixed
-#gba = { git = "https://git.mintendo-programmer.de/gba/gba", branch = "frickel" }
-gba = { git = "https://gitlab.spline.inf.fu-berlin.de/gba/gba", branch = "frickel" }
+gba = {git = "https://github.com/rust-console/gba" } # We use features that aren't present in the latest release yet
 linked_list_allocator = {version = "*", default_features = false} # Spinlock unusable due to lack of HW support for atomics
 ansi_rgb = "*"
+arrayref = "0.3"
 tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
+gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}

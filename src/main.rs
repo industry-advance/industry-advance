@@ -18,8 +18,11 @@ use ansi_rgb::green;
 
 use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
+use gbfs_rs::{const_fs, GBFSFilesystem};
 
-mod assets;
+#[macro_use]
+extern crate arrayref;
+
 mod background;
 mod components;
 mod entities;
@@ -32,6 +35,10 @@ mod systems;
 use core::fmt::Write;
 
 use game::Game;
+
+// Filesystem containing assets
+const FS_DATA: &'static [u8] = include_bytes!("../assets.gbfs");
+const FS: GBFSFilesystem<'static> = const_fs(FS_DATA);
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {

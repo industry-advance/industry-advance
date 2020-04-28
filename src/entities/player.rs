@@ -1,4 +1,3 @@
-use crate::assets::sprites::sprites::DART_SHIP_TILES;
 use crate::components::{MovementComponent, SpriteComponent};
 use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
@@ -7,6 +6,7 @@ use tiny_ecs::{ECSError, Entities};
 pub(crate) fn add_player(
     entities: &mut Entities,
     sprite_alloc: &mut HWSpriteAllocator,
+    tiles: &[u32],
 ) -> Result<usize, ECSError> {
     let mut movement_component = MovementComponent::new();
     movement_component.input_controlled = true;
@@ -14,7 +14,7 @@ pub(crate) fn add_player(
         .new_entity()
         .with(SpriteComponent::init(
             sprite_alloc,
-            &DART_SHIP_TILES,
+            &tiles,
             HWSpriteSize::ThirtyTwoByThirtyTwo,
         ))?
         .with(movement_component)?

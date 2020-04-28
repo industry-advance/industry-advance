@@ -2,6 +2,7 @@ let
   sources = import ./sources.nix;
   rust = import ./rust.nix { inherit sources; };
   grit = import ./grit.nix { inherit sources; };
+  gba-tools = import ./gba-tools.nix { inherit sources; };
   nixpkgs = import sources.nixpkgs { };
 in {
   # List of packages which are needed both for testing and CI.
@@ -15,6 +16,7 @@ in {
     nixpkgs.cacert
     nixpkgs.clippy
     grit
+    gba-tools
 
     # For running tests headlessly
     nixpkgs.mgba
