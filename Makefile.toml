@@ -56,7 +56,7 @@ alias = "build-all"
 [tasks.debug-gdb]
 dependencies = ["build-debug"]
 command = "/usr/bin/mgba-qt"
-args = ["--log-level=-1", "./target/thumbv4-none-agb/debug/industry-advance", "--gdb"]
+args = ["--log-level=2047", "./target/thumbv4-none-agb/debug/industry-advance", "-g"]
 
 [tasks.debug]
 dependencies = ["build-debug"]
