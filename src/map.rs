@@ -2,6 +2,7 @@ use crate::background::{LargeBackground, SCREENBLOCK_SIZE_IN_U8};
 
 use alloc::vec::Vec;
 
+#[derive(Debug)]
 pub(crate) struct Map<'a> {
     bg: LargeBackground<'a>,
 }

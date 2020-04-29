@@ -8,6 +8,7 @@ pub const EWRAM_END: usize = 0x203_FFFF;
 pub const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
 pub struct MyBigAllocator; // Empty struct; doesn't actually save any data, it's just a handle that can be made immutably `static` to satisfy the global_alloc interface
 
+#[derive(Debug)]
 struct BlockAllocate {
     free: bool,
     size: usize,
@@ -15,13 +16,16 @@ struct BlockAllocate {
 
 unsafe impl GlobalAlloc for MyBigAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        gba::debug!("Alloc Call, find {} Bytes", layout.size());
         // TODO: Philipp, kannst du sagen ob dir meine Kommentare Sinn ergeben?
         // Current block we're checking for allocation eligibility
         let mut current_block_position = EWRAM_BASE;
         let mut current_block: &mut BlockAllocate;
         while current_block_position < EWRAM_END {
+            gba::debug!("Check Block on position 0x{:x}", current_block_position);
             // Obtain a reference to the block we're checking
             current_block = mem::transmute::<usize, &mut BlockAllocate>(current_block_position);
+            gba::debug!("Block Metadata {:?}", current_block);
             // Check whether data + control structure would fit
             if current_block.free
                 && current_block.size - mem::size_of::<BlockAllocate>() >= layout.size()
@@ -33,15 +37,29 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                 // new size is allocated Bytes + size of Control Block\
                 current_block.size = layout.size() + mem::size_of::<BlockAllocate>(); // layout.size bytes of data + control bytes
                 current_block.free = false;
+                assert_eq!(
+                    (old_size - current_block.size) + current_block.size,
+                    old_size
+                );
+                assert_eq!(
+                    current_block.size,
+                    layout.size() + mem::size_of::<BlockAllocate>()
+                );
                 create_new_block(
                     current_block_position + current_block.size,
                     old_size - current_block.size,
                 );
                 gba::debug!(
-                    "allocate Block at {} with size {}",
+                    "allocate Block at 0x{:x} with size {}",
                     current_block_position,
                     current_block.size
                 );
+                {
+                    let block2 = mem::transmute::<usize, &mut BlockAllocate>(
+                        current_block_position + current_block.size,
+                    );
+                    assert_eq!(block2.size, current_block_position + current_block.size);
+                }
                 return mem::transmute::<usize, *mut u8>(
                     current_block_position + mem::size_of::<BlockAllocate>(),
                 );
@@ -65,8 +83,10 @@ unsafe impl GlobalAlloc for MyBigAllocator {
 
 /// Allocate block of `size` at address `base`
 pub unsafe fn create_new_block(base: usize, size: usize) {
-    gba::debug!("New free Block with size {} on Mem: {}", size, base);
+    gba::debug!("New free Block with size {} on Mem: 0x{:x}", size, base);
     let test: &mut BlockAllocate = mem::transmute::<usize, &mut BlockAllocate>(base);
     test.size = size;
     test.free = true;
+    gba::debug!("Position of free var 0x{:p}", &test.free);
+    gba::debug!("Position of size var 0x{:p}", &test.size);
 }

@@ -35,6 +35,7 @@ impl<'a> Game<'a> {
 
     /// Creates and initializes a new game.
     pub fn init() -> Game<'a> {
+        gba::debug!("Before FS");
         // Initialize hardware sprite management
         let mut sprite_allocator = HWSpriteAllocator::new(
             &FS.get_file_by_name(FilenameString::try_from_str("sprite_sharedPal").unwrap())
@@ -42,6 +43,7 @@ impl<'a> Game<'a> {
                 .to_u16_vec(),
         );
         sprite_allocator.init();
+        gba::debug!("After FS");
 
         let map_0: &'static [u8] = FS
             .get_file_data_by_name(FilenameString::try_from_str("testmap_0Map").unwrap())
@@ -61,6 +63,7 @@ impl<'a> Game<'a> {
         tilemaps.push(map_2);
         tilemaps.push(map_3);
 
+        gba::debug!("Tilemaps: {:?}", tilemaps);
         // Read palette from FS and convert to u16's
         let pal: Vec<u16> = FS
             .get_file_by_name(FilenameString::try_from_str("map_sharedPal").unwrap())

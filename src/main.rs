@@ -77,8 +77,6 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     }
     test_allocator();
 
-    //unsafe { gba::debug!("EWRAM_END: {}", ALLOCATOR.0.borrow_mut().size()) };
-
     gba::info!("Starting game!");
 
     let mut game = Game::init();

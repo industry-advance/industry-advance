@@ -34,6 +34,7 @@ const CHARBLOCK_SIZE_BYTES: usize = 16 * 1024;
 ///
 /// This code assumes that it's in sole control of the display control register's background and size settings,
 /// as well as all charblocks and screenblocks in VRAM and background PALRAM.
+#[derive(Debug)]
 pub(crate) struct LargeBackground<'a> {
     backing_tilemaps: Vec<Vec<&'a [u8]>>, // 2D map of
     // Absolute coordinates of the current top-left corner of the screen on the map.
@@ -48,6 +49,7 @@ pub(crate) struct LargeBackground<'a> {
 }
 
 /// A 64x64 tile background is made up of 4 32x32 tile screenblocks.
+#[derive(Debug)]
 enum BGScreenblockSlots {
     Zero,
     One,
