@@ -1,63 +1,72 @@
-use core::alloc::{GlobalAlloc, Layout};
-use core::cell::UnsafeCell;
-use core::ptr::NonNull;
+use core::alloc::*;
+use core::mem;
 
-/// This module implements a simple allocator for external work RAM.
-/// The code is largely based on the linked_list_allocator crate, modified to work without CPU atomic support.
-/// WARNING: EWRAM is slow. Only use for allocations where this is acceptable.
-use linked_list_allocator::Heap;
+use gba;
 
-// TODO: Consider moving this stuff into gba crate (there's an open issue for that)
-pub(crate) const EWRAM_BASE: usize = 0x200_0000;
-pub(crate) const EWRAM_END: usize = 0x203_FFFF;
-pub(crate) const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
-/// A heap implementing GlobalAlloc without using a lock (useful on no_std platforms without atomics, as a spin lock is impossible to implement there).
-/// # Safety
-/// Only use on platforms where there's no other choice!
-/// This is ONLY to be used in a single-threaded, single-CPU, `no_std` context! Race conditions galore!
-pub(crate) struct RaceyHeap(UnsafeCell<Heap>);
+pub const EWRAM_BASE: usize = 0x200_0000;
+pub const EWRAM_END: usize = 0x203_FFFF;
+pub const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
+pub struct MyBigAllocator; // Empty struct; doesn't actually save any data, it's just a handle that can be made immutably `static` to satisfy the global_alloc interface
 
-impl RaceyHeap {
-    /// Creates an empty heap. All allocate calls will return `None`.
-    /// This is primarily useful for having a `static`-friendly object, which the `global_alloc` interface requires.
-    /// In order for the allocator to actually be usable, you have to call `init()`.
-    pub const fn empty() -> RaceyHeap {
-        RaceyHeap(UnsafeCell::new(Heap::empty()))
-    }
-
-    /// Configures the heap to actually be usable.
-    /// This has to be separate from the constructor, because this function is not `static`.
-    ///
-    /// # Safety
-    ///
-    /// This function must be called at most once and must only be used on an empty heap.
-    pub(crate) unsafe fn init(&self, heap_start: usize, heap_size: usize) {
-        &self.0.get().as_mut().unwrap().init(heap_start, heap_size);
-    }
+struct BlockAllocate {
+    free: bool,
+    size: usize,
 }
 
-unsafe impl GlobalAlloc for RaceyHeap {
+unsafe impl GlobalAlloc for MyBigAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.0
-            .get()
-            .as_mut()
-            .unwrap()
-            .allocate_first_fit(layout)
-            .ok()
-            .map_or(0 as *mut u8, |allocation| allocation.as_ptr())
+        // TODO: Philipp, kannst du sagen ob dir meine Kommentare Sinn ergeben?
+        // Current block we're checking for allocation eligibility
+        let mut current_block_position = EWRAM_BASE;
+        let mut current_block: &mut BlockAllocate;
+        while current_block_position < EWRAM_END {
+            // Obtain a reference to the block we're checking
+            current_block = mem::transmute::<usize, &mut BlockAllocate>(current_block_position);
+            // Check whether data + control structure would fit
+            if current_block.free
+                && current_block.size - mem::size_of::<BlockAllocate>() >= layout.size()
+            {
+                // big enough free block found
+                // lets split it
+                let old_size = current_block.size;
+
+                // new size is allocated Bytes + size of Control Block\
+                current_block.size = layout.size() + mem::size_of::<BlockAllocate>(); // layout.size bytes of data + control bytes
+                current_block.free = false;
+                create_new_block(
+                    current_block_position + current_block.size,
+                    old_size - current_block.size,
+                );
+                gba::debug!(
+                    "allocate Block at {} with size {}",
+                    current_block_position,
+                    current_block.size
+                );
+                return mem::transmute::<usize, *mut u8>(
+                    current_block_position + mem::size_of::<BlockAllocate>(),
+                );
+            }
+            // Check next block
+            // We have to move layout.size() + mem::size_of::<BlockAllocate>() positions
+            current_block_position = current_block_position + current_block.size;
+        }
+        // If no block could be found, return a null pointer
+        return mem::transmute::<usize, *mut u8>(0);
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.0
-            .get()
-            .as_mut()
-            .unwrap()
-            .deallocate(NonNull::new_unchecked(ptr), layout)
+        let test: &mut BlockAllocate = mem::transmute::<usize, &mut BlockAllocate>(
+            mem::transmute::<*mut u8, usize>(ptr) - mem::size_of::<BlockAllocate>(),
+        );
+        test.free = true;
+        // TODO: Check whether adjacent blocks are free and perform coalescing
     }
 }
 
-/// This Sync "implementation" is incorrect and wildly unsafe if actually used.
-/// That doesn't matter here though, as the GBA is a single-processor, single-thread-of-execution system.
-/// This trait just needs to be here to satisfy the compiler, as it seems to lack a way to tell it that the target
-/// machine has no such thing as concurrent execution.
-unsafe impl Sync for RaceyHeap {}
+/// Allocate block of `size` at address `base`
+pub unsafe fn create_new_block(base: usize, size: usize) {
+    gba::debug!("New free Block with size {} on Mem: {}", size, base);
+    let test: &mut BlockAllocate = mem::transmute::<usize, &mut BlockAllocate>(base);
+    test.size = size;
+    test.free = true;
+}

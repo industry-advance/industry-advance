@@ -4,7 +4,7 @@ let
   pkgs =
     import sources.nixpkgs { overlays = [ (import sources.nixpkgs-mozilla) ]; };
   channel = "nightly";
-  date = "2020-04-06";
+  date = "2020-04-27";
   targets = [ ];
   extensions = [ "rust-src" "rls-preview" "rust-analysis" "rustfmt-preview" ];
   rustChannelOfTargetsAndExtensions = channel: date: targets: extensions:

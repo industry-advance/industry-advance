@@ -13,12 +13,21 @@
 
 extern crate alloc;
 
+// TODO: Consider moving this stuff into gba crate (there's an open issue for that)
+pub(crate) const EWRAM_BASE: usize = 0x200_0000;
+pub(crate) const EWRAM_END: usize = 0x203_FFFF;
+pub(crate) const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
+
 #[cfg(test)]
 use ansi_rgb::green;
 
 use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 use gbfs_rs::{const_fs, GBFSFilesystem};
+
+// TODO: REMOVE
+use alloc::boxed::Box;
+use alloc::string::String;
 
 #[macro_use]
 extern crate arrayref;
@@ -33,6 +42,7 @@ mod sprite;
 mod systems;
 
 use core::fmt::Write;
+use core::str::FromStr;
 
 use game::Game;
 
@@ -57,14 +67,19 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
     // Run only tests if asked
     #[cfg(test)]
-    test_main();
-    #[cfg(test)]
-    loop {}
+    {
+        test_main();
+        loop {}
+    }
+
+    unsafe {
+        ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
+    }
+    test_allocator();
+
+    //unsafe { gba::debug!("EWRAM_END: {}", ALLOCATOR.0.borrow_mut().size()) };
 
     gba::info!("Starting game!");
-
-    // Initialize the heap
-    unsafe { ALLOCATOR.init(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE) };
 
     let mut game = Game::init();
     // Start game loop
@@ -74,7 +89,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
 
 // Heap allocator config
 #[global_allocator]
-static ALLOCATOR: ewram_alloc::RaceyHeap = ewram_alloc::RaceyHeap::empty();
+static ALLOCATOR: ewram_alloc::MyBigAllocator = ewram_alloc::MyBigAllocator;
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
@@ -85,8 +100,9 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 #[cfg(test)]
 fn test_runner(tests: &[&dyn Fn()]) {
     // Prepare memory allocator for tests that require dynamic allocation
-    unsafe { ALLOCATOR.init(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE) };
-
+    unsafe {
+        ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
+    }
     let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
     writeln!(writer, "Running {} tests", tests.len())
         .expect("Failed to write to MGBA debug message register");
@@ -117,4 +133,25 @@ fn should_always_pass() {
     writeln!(writer, "{}", "[ok]".fg(green()))
         .expect("Failed to write to MGBA debug message register");
     writer.send(MGBADebugLevel::Info);
+}
+
+// #[test_case]
+fn test_allocator() {
+    // Allocate and drop stuff in a loop to check whether allocator deals with allocation churn well
+    gba::debug!("Allocating box 1");
+    let test_box: Box<u32> = Box::new(3);
+    assert_eq!(*test_box, 3);
+    gba::debug!("Finished allocating box 1");
+
+    gba::debug!("Allocating box 2");
+    let test_box2: Box<u32> = Box::new(5);
+    assert_eq!(*test_box2, 5);
+    gba::debug!("Finished allocating box 2");
+
+    gba::debug!("Allocating string 1");
+    let str = String::from("FOOFOOOFOOOFOFOFOOFOFOF");
+    assert_eq!(str.as_str(), "FOOFOOOFOOOFOFOFOOFOFOF");
+    gba::debug!("Finished allocating string 1");
+
+    gba::debug!("Alloc tests passed!");
 }
