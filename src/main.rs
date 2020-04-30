@@ -89,24 +89,6 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     // Start game loop
 
     game.run();
-
-    // TODO: Move this into a test
-    let mut size_bytes: usize = 100;
-    let num_objects_per_round = 10;
-    loop {
-        gba::info!("[XXXXXXXXXXXXXXXXXXXX] Allocator stress test");
-        let mut all_boxes: Vec<Box<[u8]>> = Vec::new();
-        for i in 0..num_objects_per_round {
-            let test_vec: Box<[u8]> = vec![0xFF; size_bytes].into_boxed_slice();
-            all_boxes.push(test_vec);
-        }
-        gba::info!(
-            "[XXXXXXXXXXXXXXXX] Survived allocation of {} byte objects for {} times",
-            size_bytes,
-            num_objects_per_round
-        );
-        size_bytes *= 10;
-    }
 }
 
 // Heap allocator config
@@ -157,7 +139,7 @@ fn should_always_pass() {
     writer.send(MGBADebugLevel::Info);
 }
 
-// #[test_case]
+#[test_case]
 fn test_allocator() {
     // Allocate and drop stuff in a loop to check whether allocator deals with allocation churn well
     gba::debug!("Allocating box 1");
@@ -176,4 +158,25 @@ fn test_allocator() {
     gba::debug!("Finished allocating string 1");
 
     gba::debug!("Alloc tests passed!");
+}
+
+#[test_case]
+fn allocator_stress_test() {
+    // TODO: Move this into a test
+    let mut size_bytes: usize = 100;
+    let num_objects_per_round = 10;
+    for _s in 0..3 {
+        gba::info!("[XXXXXXXXXXXXXXXXXXXX] Allocator stress test");
+        let mut all_boxes: Vec<Box<[u8]>> = Vec::new();
+        for _i in 0..num_objects_per_round {
+            let test_vec: Box<[u8]> = vec![0xFF; size_bytes].into_boxed_slice();
+            all_boxes.push(test_vec);
+        }
+        gba::info!(
+            "[XXXXXXXXXXXXXXXX] Survived allocation of {} byte objects for {} times",
+            size_bytes,
+            num_objects_per_round
+        );
+        size_bytes *= 10;
+    }
 }
