@@ -13,7 +13,7 @@ use core::convert::TryInto; // One is a macro, the other a namespace
 use crate::ewram_alloc;
 
 use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
-use gbfs_rs::FilenameString;
+use gbfs_rs::Filename;
 use gbfs_rs::*;
 use tiny_ecs::Entities;
 
@@ -40,6 +40,7 @@ impl<'a> Game<'a> {
     pub fn init() -> Game<'a> {
         gba::debug!("Before FS");
 
+        // TODO: Remove
         let mut b = Box::new(4);
         gba::debug!("Box {:?}", b);
         b = Box::new(4);
@@ -47,49 +48,35 @@ impl<'a> Game<'a> {
 
         // Initialize hardware sprite management
 
-        gba::debug!("FilenameString::try_from_str('sprite_sharedPal').unwrap()");
-        let d1 = FilenameString::try_from_str("sprite_sharedPal");
+        gba::debug!("Filename::try_from_str('sprite_sharedPal').unwrap()");
+        let d1 = Filename::try_from_str("sprite_sharedPal");
 
         gba::debug!("DATA: {:?}", d1);
         let d2 = d1.unwrap();
-        //panic!("??????");
         gba::debug!(".unwrap() {:?}", d2);
 
-        //panic!(">>>>>>>>>");
-
-        //let d3 = ;
-
-        gba::debug!("DFSERGERGEGERREG {:?}", FS.get_file_by_name(d2));
-
         let mut sprite_allocator = HWSpriteAllocator::new(
-            &FS.get_file_by_name(FilenameString::try_from_str("sprite_sharedPal").unwrap())
-                .unwrap()
-                .to_u16_vec(),
+            &FS.get_file_data_by_name_as_u16_slice(
+                Filename::try_from_str("sprite_sharedPal").unwrap(),
+            )
+            .unwrap(),
         );
-
-        //panic!("::::::::");
-
         sprite_allocator.init();
-
-        //panic!("::::::::");
 
         gba::debug!("After FS");
 
         let map_0: &'static [u8] = FS
-            .get_file_data_by_name(FilenameString::try_from_str("testmap_0Map").unwrap())
+            .get_file_data_by_name(Filename::try_from_str("testmap_0Map").unwrap())
             .unwrap();
-        //panic!("::::::::");
         let map_1: &'static [u8] = FS
-            .get_file_data_by_name(FilenameString::try_from_str("testmap_1Map").unwrap())
+            .get_file_data_by_name(Filename::try_from_str("testmap_1Map").unwrap())
             .unwrap();
-        //panic!("::::::::");
         let map_2: &'static [u8] = FS
-            .get_file_data_by_name(FilenameString::try_from_str("testmap_2Map").unwrap())
+            .get_file_data_by_name(Filename::try_from_str("testmap_2Map").unwrap())
             .unwrap();
         let map_3: &'static [u8] = FS
-            .get_file_data_by_name(FilenameString::try_from_str("testmap_3Map").unwrap())
+            .get_file_data_by_name(Filename::try_from_str("testmap_3Map").unwrap())
             .unwrap();
-        //panic!("TEstdfsfef");
         let mut tilemaps: Vec<&'static [u8]> = Vec::new();
 
         tilemaps.push(map_0);
@@ -99,14 +86,12 @@ impl<'a> Game<'a> {
 
         gba::debug!("Tilemaps: {:?}", tilemaps);
         // Read palette from FS and convert to u16's
-        let pal: Vec<u16> = FS
-            .get_file_by_name(FilenameString::try_from_str("map_sharedPal").unwrap())
-            .unwrap()
-            .to_u16_vec();
-        let tiles: Vec<u32> = FS
-            .get_file_by_name(FilenameString::try_from_str("map_sharedTiles").unwrap())
-            .unwrap()
-            .to_u32_vec();
+        let pal: &'a [u16] = FS
+            .get_file_data_by_name_as_u16_slice(Filename::try_from_str("map_sharedPal").unwrap())
+            .unwrap();
+        let tiles: &'a [u32] = FS
+            .get_file_data_by_name_as_u32_slice(Filename::try_from_str("map_sharedTiles").unwrap())
+            .unwrap();
         let map = Map::new_map(pal, 2, 2, tiles, tilemaps);
 
         // Initialize the ECS
@@ -117,9 +102,10 @@ impl<'a> Game<'a> {
         let player_id = entities::add_player(
             &mut e,
             &mut sprite_allocator,
-            &FS.get_file_by_name(FilenameString::try_from_str("dart_shipTiles").unwrap())
-                .unwrap()
-                .to_u32_vec(),
+            &FS.get_file_data_by_name_as_u32_slice(
+                Filename::try_from_str("dart_shipTiles").unwrap(),
+            )
+            .unwrap(),
         )
         .expect("Failed to initialize player entity");
         live_entity_ids.push(player_id);

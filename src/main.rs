@@ -23,7 +23,7 @@ use ansi_rgb::green;
 
 use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
-use gbfs_rs::{const_fs, GBFSFilesystem};
+use gbfs_rs::GBFSFilesystem;
 
 // TODO: REMOVE
 use alloc::boxed::Box;
@@ -48,7 +48,7 @@ use game::Game;
 
 // Filesystem containing assets
 const FS_DATA: &'static [u8] = include_bytes!("../assets.gbfs");
-const FS: GBFSFilesystem<'static> = const_fs(FS_DATA);
+const FS: GBFSFilesystem<'static> = GBFSFilesystem::from_slice(FS_DATA);
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -83,11 +83,6 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
 
     gba::info!("Starting game!");
 
-    unsafe {
-        ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
-        //ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE + 0x100, ewram_alloc::EWRAM_SIZE);
-        //ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE + 0x200, ewram_alloc::EWRAM_SIZE);
-    }
     //panic!("FDSAFEFWEFW");
     let mut game = Game::init();
     // Start game loop

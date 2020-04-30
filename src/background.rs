@@ -64,9 +64,9 @@ impl LargeBackground<'_> {
     /// center_x and center_y are the coordinates for where to initially place the center of the displayed area.
     /// The coordinate system starts at the top-left corner.
     pub(crate) fn init<'a>(
-        tiles: Vec<u32>,
+        tiles: &'a [u32],
         backing_tilemaps: Vec<Vec<&'a [u8]>>,
-        palette: Vec<u16>,
+        palette: &'a [u16],
     ) -> LargeBackground<'a> {
         // Ensure we have at least 1 backing tilemap
         if backing_tilemaps.len() < 1 {

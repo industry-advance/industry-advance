@@ -14,10 +14,10 @@ impl Map<'_> {
     /// Each tilemap must be SCREENBLOCK_SIZE_IN_U8 large.
     /// If it isn't, this function will panic.
     pub(crate) fn new_map<'a>(
-        palette: Vec<u16>,
+        palette: &'a [u16],
         x: usize,
         y: usize,
-        tiles: Vec<u32>,
+        tiles: &'a [u32],
         tilemaps: Vec<&'a [u8]>,
     ) -> Map<'a> {
         for tilemap in tilemaps.clone() {

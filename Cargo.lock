@@ -37,6 +37,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 
 [[package]]
+name = "byte-slice-cast"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0a5e3906bcbf133e33c1d4d95afc664ad37fbdb9f6568d8043e7ea8c27d93d3"
+
+[[package]]
 name = "core-error"
 version = "0.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -69,10 +75,11 @@ dependencies = [
 [[package]]
 name = "gbfs_rs"
 version = "0.1.0"
-source = "git+https://github.com/industry-advance/gbfs_rs#5cd01ad8a9bbc10a1792805ae8e8921c70dce119"
+source = "git+https://github.com/industry-advance/gbfs_rs#6eadf9199f2c663a1bb6c70db87eaf542e544984"
 dependencies = [
  "arraystring",
  "arrayvec",
+ "byte-slice-cast",
 ]
 
 [[package]]
