@@ -12,8 +12,8 @@
             "showDevDebugOutput": true,
             "executable": "${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance",
             "gdbpath": "arm-none-eabi-gdb",
-            //"preLaunchTask": "debugRun",
-            //"postDebugTask": "debugKill",
+            "preLaunchTask": "run GDB server",
+            "postDebugTask": "kill emulator",
             "autorun": [
                 //"target remote localhost:2345",
                 //"symbol-file ./target/thumbv4-none-agb/debug/industry-advance",
