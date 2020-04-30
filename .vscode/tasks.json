@@ -11,7 +11,7 @@
             "type": "shell",
             "isBackground": false,
             "linux": {
-                "command": "(nohup /usr/bin/mgba-qt -g ${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance &) && sleep 5 && echo $?"
+                "command": "cargo make build-debug && (nohup /usr/bin/mgba-qt --log-level=15 -g ${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance &) && sleep 5 && echo $?"
             },
             "command": "debuggerReady",
             "problemMatcher": {

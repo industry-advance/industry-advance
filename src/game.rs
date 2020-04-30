@@ -28,12 +28,14 @@ pub(crate) struct Game<'a> {
 
 impl<'a> Game<'a> {
     pub(crate) fn run(&mut self) {
+        /*
         loop {
             self.update();
             // For now, tick once every vblank
             // TODO: More power efficiency w/ interrupt
             while VCOUNT.read() >= VBLANK_SCANLINE {}
         }
+        */
     }
 
     /// Creates and initializes a new game.
