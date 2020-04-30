@@ -6,8 +6,11 @@ use crate::sprite::HWSpriteAllocator;
 use crate::systems::{InputSystem, MovementSystem};
 use crate::FS;
 
+use alloc::boxed::Box;
 use alloc::{vec, vec::Vec};
 use core::convert::TryInto; // One is a macro, the other a namespace
+
+use crate::ewram_alloc;
 
 use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::FilenameString;
@@ -36,28 +39,59 @@ impl<'a> Game<'a> {
     /// Creates and initializes a new game.
     pub fn init() -> Game<'a> {
         gba::debug!("Before FS");
+
+        let mut b = Box::new(4);
+        gba::debug!("Box {:?}", b);
+        b = Box::new(4);
+        gba::debug!("Box {:?}", b);
+
         // Initialize hardware sprite management
+
+        gba::debug!("FilenameString::try_from_str('sprite_sharedPal').unwrap()");
+        let d1 = FilenameString::try_from_str("sprite_sharedPal");
+
+        gba::debug!("DATA: {:?}", d1);
+        let d2 = d1.unwrap();
+        //panic!("??????");
+        gba::debug!(".unwrap() {:?}", d2);
+
+        //panic!(">>>>>>>>>");
+
+        //let d3 = ;
+
+        gba::debug!("DFSERGERGEGERREG {:?}", FS.get_file_by_name(d2));
+
         let mut sprite_allocator = HWSpriteAllocator::new(
             &FS.get_file_by_name(FilenameString::try_from_str("sprite_sharedPal").unwrap())
                 .unwrap()
                 .to_u16_vec(),
         );
+
+        //panic!("::::::::");
+
         sprite_allocator.init();
+
+        //panic!("::::::::");
+
         gba::debug!("After FS");
 
         let map_0: &'static [u8] = FS
             .get_file_data_by_name(FilenameString::try_from_str("testmap_0Map").unwrap())
             .unwrap();
+        //panic!("::::::::");
         let map_1: &'static [u8] = FS
             .get_file_data_by_name(FilenameString::try_from_str("testmap_1Map").unwrap())
             .unwrap();
+        //panic!("::::::::");
         let map_2: &'static [u8] = FS
             .get_file_data_by_name(FilenameString::try_from_str("testmap_2Map").unwrap())
             .unwrap();
         let map_3: &'static [u8] = FS
             .get_file_data_by_name(FilenameString::try_from_str("testmap_3Map").unwrap())
             .unwrap();
+        //panic!("TEstdfsfef");
         let mut tilemaps: Vec<&'static [u8]> = Vec::new();
+
         tilemaps.push(map_0);
         tilemaps.push(map_1);
         tilemaps.push(map_2);
