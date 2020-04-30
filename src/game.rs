@@ -28,35 +28,21 @@ pub(crate) struct Game<'a> {
 
 impl<'a> Game<'a> {
     pub(crate) fn run(&mut self) {
-        
         loop {
             self.update();
             // For now, tick once every vblank
             // TODO: More power efficiency w/ interrupt
             while VCOUNT.read() >= VBLANK_SCANLINE {}
         }
-        
     }
 
     /// Creates and initializes a new game.
     pub fn init() -> Game<'a> {
-        gba::debug!("Before FS");
-
-        // TODO: Remove
-        let mut b = Box::new(4);
-        gba::debug!("Box {:?}", b);
-        b = Box::new(4);
-        gba::debug!("Box {:?}", b);
+        gba::debug!("Loading game data from FS");
 
         // Initialize hardware sprite management
 
-        gba::debug!("Filename::try_from_str('sprite_sharedPal').unwrap()");
-        let d1 = Filename::try_from_str("sprite_sharedPal");
-
-        gba::debug!("DATA: {:?}", d1);
-        let d2 = d1.unwrap();
-        gba::debug!(".unwrap() {:?}", d2);
-
+        gba::debug!("Initializing sprite allocator");
         let mut sprite_allocator = HWSpriteAllocator::new(
             &FS.get_file_data_by_name_as_u16_slice(
                 Filename::try_from_str("sprite_sharedPal").unwrap(),
@@ -64,8 +50,6 @@ impl<'a> Game<'a> {
             .unwrap(),
         );
         sprite_allocator.init();
-
-        gba::debug!("After FS");
 
         let map_0: &'static [u8] = FS
             .get_file_data_by_name(Filename::try_from_str("testmap_0Map").unwrap())
@@ -87,7 +71,6 @@ impl<'a> Game<'a> {
         tilemaps.push(map_3);
 
         gba::debug!("Tilemaps: {:?}", tilemaps);
-        // Read palette from FS and convert to u16's
         let pal: &'a [u16] = FS
             .get_file_data_by_name_as_u16_slice(Filename::try_from_str("map_sharedPal").unwrap())
             .unwrap();

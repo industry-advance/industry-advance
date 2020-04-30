@@ -30,8 +30,6 @@ use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 use gbfs_rs::GBFSFilesystem;
 
-// TODO: REMOVE
-
 #[macro_use]
 extern crate arrayref;
 
@@ -75,20 +73,19 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
         loop {}
     }
 
-    assert_eq!(core::mem::size_of::<ewram_alloc::BlockAllocate>(), 8);
-
+    // Initialize the allocator
     unsafe {
         ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
     }
-    test_allocator();
 
     gba::info!("Starting game!");
 
-    //panic!("FDSAFEFWEFW");
     let mut game = Game::init();
     // Start game loop
-
     game.run();
+    // Don't return
+    gba::debug!("Done running game loop, looping forever");
+    loop {}
 }
 
 // Heap allocator config
@@ -107,16 +104,12 @@ fn test_runner(tests: &[&dyn Fn()]) {
     unsafe {
         ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
     }
-    let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
-    writeln!(writer, "Running {} tests", tests.len())
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
+    gba::info!("Running {} tests", tests.len());
+    // Actually run tests
     for test in tests {
         test();
     }
-    writeln!(writer, "{}", "[ALL TESTS DONE]".fg(green()))
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
+    gba::info!(writer, "{}", "[ALL TESTS DONE]".fg(green()));
 
     // Because mGBA has no feature to terminate emulation from within the game with a successful
     // exit code, we have to use a hack here.
@@ -141,7 +134,7 @@ fn should_always_pass() {
 
 #[test_case]
 fn test_allocator() {
-    // Allocate and drop stuff in a loop to check whether allocator deals with allocation churn well
+    // Perform some small allocations and ensure that what we expect was allocated
     gba::debug!("Allocating box 1");
     let test_box: Box<u32> = Box::new(3);
     assert_eq!(*test_box, 3);
@@ -162,13 +155,14 @@ fn test_allocator() {
 
 #[test_case]
 fn allocator_stress_test() {
-    // TODO: Move this into a test
+    // Perform an allocator "stress test" by continuously allocating and dropping large data structures.
     let mut size_bytes: usize = 100;
     let num_objects_per_round = 10;
     for _s in 0..3 {
         gba::info!("[XXXXXXXXXXXXXXXXXXXX] Allocator stress test");
         let mut all_boxes: Vec<Box<[u8]>> = Vec::new();
         for _i in 0..num_objects_per_round {
+            // Hack to ensure we don't blow our stack by not first writing to the stack and then copying to the heap
             let test_vec: Box<[u8]> = vec![0xFF; size_bytes].into_boxed_slice();
             all_boxes.push(test_vec);
         }
