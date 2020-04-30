@@ -14,10 +14,6 @@
 #[macro_use]
 extern crate alloc;
 
-use alloc::boxed::Box;
-use alloc::string::String;
-use alloc::vec::Vec;
-
 // TODO: Consider moving this stuff into gba crate (there's an open issue for that)
 pub(crate) const EWRAM_BASE: usize = 0x200_0000;
 pub(crate) const EWRAM_END: usize = 0x203_FFFF;
@@ -130,47 +126,4 @@ fn should_always_pass() {
     writeln!(writer, "{}", "[ok]".fg(green()))
         .expect("Failed to write to MGBA debug message register");
     writer.send(MGBADebugLevel::Info);
-}
-
-#[test_case]
-fn test_allocator() {
-    // Perform some small allocations and ensure that what we expect was allocated
-    gba::debug!("Allocating box 1");
-    let test_box: Box<u32> = Box::new(3);
-    assert_eq!(*test_box, 3);
-    gba::debug!("Finished allocating box 1");
-
-    gba::debug!("Allocating box 2");
-    let test_box2: Box<u32> = Box::new(5);
-    assert_eq!(*test_box2, 5);
-    gba::debug!("Finished allocating box 2");
-
-    gba::debug!("Allocating string 1");
-    let str = String::from("FOOFOOOFOOOFOFOFOOFOFOF");
-    assert_eq!(str.as_str(), "FOOFOOOFOOOFOFOFOOFOFOF");
-    gba::debug!("Finished allocating string 1");
-
-    gba::debug!("Alloc tests passed!");
-}
-
-#[test_case]
-fn allocator_stress_test() {
-    // Perform an allocator "stress test" by continuously allocating and dropping large data structures.
-    let mut size_bytes: usize = 100;
-    let num_objects_per_round = 10;
-    for _s in 0..3 {
-        gba::info!("[XXXXXXXXXXXXXXXXXXXX] Allocator stress test");
-        let mut all_boxes: Vec<Box<[u8]>> = Vec::new();
-        for _i in 0..num_objects_per_round {
-            // Hack to ensure we don't blow our stack by not first writing to the stack and then copying to the heap
-            let test_vec: Box<[u8]> = vec![0xFF; size_bytes].into_boxed_slice();
-            all_boxes.push(test_vec);
-        }
-        gba::info!(
-            "[XXXXXXXXXXXXXXXX] Survived allocation of {} byte objects for {} times",
-            size_bytes,
-            num_objects_per_round
-        );
-        size_bytes *= 10;
-    }
 }
