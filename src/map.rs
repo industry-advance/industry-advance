@@ -7,13 +7,13 @@ pub(crate) struct Map<'a> {
     bg: LargeBackground<'a>,
 }
 
-impl Map<'_> {
+impl<'a> Map<'a> {
     /// Create a new map.
     /// `x` and `y` are the size of the entire map, given in number of horizontal and vertical 32x32 sub-tilemaps, respectively.
     /// . Their number must match x*y and they must be in the vector in a left-to-right, top-to-bottom order.
     /// Each tilemap must be SCREENBLOCK_SIZE_IN_U8 large.
     /// If it isn't, this function will panic.
-    pub(crate) fn new_map<'a>(
+    pub(crate) fn new_map(
         palette: &'a [u16],
         x: usize,
         y: usize,

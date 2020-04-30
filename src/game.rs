@@ -70,7 +70,6 @@ impl<'a> Game<'a> {
         tilemaps.push(map_2);
         tilemaps.push(map_3);
 
-        gba::debug!("Tilemaps: {:?}", tilemaps);
         let pal: &'a [u16] = FS
             .get_file_data_by_name_as_u16_slice(Filename::try_from_str("map_sharedPal").unwrap())
             .unwrap();

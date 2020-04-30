@@ -57,13 +57,13 @@ enum BGScreenblockSlots {
     Three,
 }
 
-impl LargeBackground<'_> {
+impl<'a> LargeBackground<'a> {
     /// Create a new `LargeBackground`.
     /// and initialize the backing backgrounds by writing data to VRAM/background PALRAM.
     ///
     /// center_x and center_y are the coordinates for where to initially place the center of the displayed area.
     /// The coordinate system starts at the top-left corner.
-    pub(crate) fn init<'a>(
+    pub(crate) fn init(
         tiles: &'a [u32],
         backing_tilemaps: Vec<Vec<&'a [u8]>>,
         palette: &'a [u16],

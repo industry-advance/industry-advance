@@ -33,7 +33,6 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                 (4 - layout.size() % 4)
             };
 
-        // TODO: Philipp, kannst du sagen ob dir meine Kommentare Sinn ergeben?
         // Current block we're checking for allocation eligibility
         let mut current_block_position = EWRAM_BASE;
         while current_block_position < EWRAM_END {
@@ -107,7 +106,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
         let mut current_block2: BlockAllocate = ptr::read_volatile::<BlockAllocate>(
             ((ptr as usize) - mem::size_of::<BlockAllocate>()) as *const BlockAllocate,
         );
-        gba::info!("Dellalloc Block with Meta (AW) {:?}", current_block2);
+        gba::info!("Dealloc Block with Meta (AW) {:?}", current_block2);
     }
 }
 

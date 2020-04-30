@@ -1,5 +1,5 @@
 use crate::FS;
-use gbfs_rs::FilenameString;
+use gbfs_rs::Filename;
 
 // TODO: Write tests
 
@@ -8,9 +8,8 @@ use gbfs_rs::FilenameString;
 fn test_init() {
     // Load palette from filesystem
     let pal = FS
-        .get_file_by_name(FilenameString::try_from_str("sprite_sharedPal").unwrap())
-        .unwrap()
-        .to_u16_vec();
+        .get_file_data_by_name_as_u16_slice(Filename::try_from_str("sprite_sharedPal").unwrap())
+        .unwrap();
     let mut sprite_allocator = super::HWSpriteAllocator::new(&pal);
     sprite_allocator.init();
 }

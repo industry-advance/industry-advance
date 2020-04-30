@@ -109,7 +109,7 @@ fn test_runner(tests: &[&dyn Fn()]) {
     for test in tests {
         test();
     }
-    gba::info!(writer, "{}", "[ALL TESTS DONE]".fg(green()));
+    gba::info!("{}", "[ALL TESTS DONE]".fg(green()));
 
     // Because mGBA has no feature to terminate emulation from within the game with a successful
     // exit code, we have to use a hack here.
