@@ -38,7 +38,7 @@ impl<'a> Game<'a> {
 
     /// Creates and initializes a new game.
     pub fn init() -> Game<'a> {
-        gba::debug!("Loading game data from FS");
+        gba::debug!("[GAME] Loading game data from FS");
 
         // Initialize hardware sprite management
 
@@ -117,7 +117,7 @@ impl<'a> Game<'a> {
             .expect("Failed to tick input system");
 
         // Simulate
-        MovementSystem::tick(&mut self.entities, &self.live_entity_ids)
+        MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
             .expect("Failed to tick movement system");
 
         // Update display

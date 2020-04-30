@@ -132,7 +132,7 @@ impl<'a> LargeBackground<'a> {
             .with_size(background::BGSize::Three);
         background::BG0CNT.write(bg_settings);
         let dispcnt = display::display_control();
-        display::set_display_control(dispcnt.with_bg0(true));
+        display::set_display_control(dispcnt.with_bg0(true).with_force_vblank(false));
 
         return lbg;
     }
@@ -192,6 +192,7 @@ impl<'a> LargeBackground<'a> {
     /// panic will occur.
     /// The coordinates referenced in the panics are always related to the top-left corner of the displayed area.
     pub fn scroll(&mut self, x: i32, y: i32) {
+        gba::info!("[BACKGROUND] Scrolling by X {}, Y {}", x, y);
         // New coords of the top-left screen corner
         let new_top_left_x: i32 = self.curr_x + x;
         let new_top_left_y: i32 = self.curr_y + y;

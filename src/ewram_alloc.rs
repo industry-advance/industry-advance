@@ -53,7 +53,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                 current_block.free = false;
                 if (old_size - current_block.size >= 16) {
                     gba::info!(
-                        "CALLING CREATE NEW BLOCK MEM 0x{:x} SIZE {}",
+                        "[ALLOC] CALLING CREATE NEW BLOCK MEM 0x{:x} SIZE {}",
                         current_block_position + current_block.size,
                         old_size - current_block.size
                     );
@@ -62,11 +62,11 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                         old_size - current_block.size,
                     );
                 } else {
-                    gba::info!("SPACE LEFT IS TO SMALL TO CREATE NEW BLOCK ");
+                    gba::info!("[ALLOC] SPACE LEFT IS TO SMALL TO CREATE NEW BLOCK ");
                     current_block.size = old_size;
                 }
                 gba::info!(
-                    "allocated Block at 0x{:x} with size {}",
+                    "[ALLOC] allocated Block at 0x{:x} with size {}",
                     current_block_position,
                     current_block.size
                 );
@@ -90,7 +90,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
             ((ptr as usize) - mem::size_of::<BlockAllocate>()) as *const BlockAllocate,
         );
 
-        gba::info!("Dellalloc Block with Meta {:?}", current_block);
+        gba::info!("[ALLOC] Dellalloc Block with Meta {:?}", current_block);
 
         current_block.free = true;
         ptr::write_volatile::<BlockAllocate>(
@@ -98,7 +98,11 @@ unsafe impl GlobalAlloc for MyBigAllocator {
             current_block.clone(),
         );
 
-        gba::info!("Deallocation {} Bytes at 0x{:p}", layout.size(), ptr);
+        gba::info!(
+            "[ALLOC] Deallocation {} Bytes at 0x{:p}",
+            layout.size(),
+            ptr
+        );
         merge_free_blocks(((ptr as usize) - mem::size_of::<BlockAllocate>()) as *mut BlockAllocate);
         //merge_free_blocks(EWRAM_BASE as *mut BlockAllocate);
         // TODO: Check whether adjacent blocks are free and perform coalescing
@@ -106,14 +110,14 @@ unsafe impl GlobalAlloc for MyBigAllocator {
         let mut current_block2: BlockAllocate = ptr::read_volatile::<BlockAllocate>(
             ((ptr as usize) - mem::size_of::<BlockAllocate>()) as *const BlockAllocate,
         );
-        gba::info!("Dealloc Block with Meta (AW) {:?}", current_block2);
+        gba::info!("[ALLOC] Dealloc Block with Meta (AW) {:?}", current_block2);
     }
 }
 
 /// Allocate block of `size` at address `base`
 pub fn create_new_block(base: usize, size: usize) {
     gba::info!(
-        "New free Block with size {} on Mem: 0x{:x}",
+        "[ALLOC] New free Block with size {} on Mem: 0x{:x}",
         size.clone(),
         base.clone()
     );
@@ -124,24 +128,24 @@ pub fn create_new_block(base: usize, size: usize) {
         filler: false,
     };
     //let control_block: &mut BlockAllocate = mem::transmute::<usize, &mut BlockAllocate>(base);
-    gba::info!("Size Test 1 {}", size);
-    gba::info!("Size in Control Block: {}", control.size);
+    gba::info!("[ALLOC] Size Test 1 {}", size);
+    gba::info!("[ALLOC] Size in Control Block: {}", control.size);
 
     let c2: BlockAllocate;
     let pointer: *mut BlockAllocate = base as *mut BlockAllocate;
-    gba::info!("Pointer To Write Base: {:p}", pointer);
+    gba::info!("[ALLOC] Pointer To Write Base: {:p}", pointer);
     unsafe {
         ptr::write_volatile(pointer, control);
 
         c2 = ptr::read_volatile::<BlockAllocate>(pointer);
     }
-    gba::info!("Pointer To Write Base (AW): {:p}", pointer);
+    gba::info!("[ALLOC] Pointer To Write Base (AW): {:p}", pointer);
 
-    gba::info!("C2 Perspective");
+    gba::info!("[ALLOC] C2 Perspective");
     //gba::debug!("Position of size var 0x{:p}", &c2.size);
-    gba::info!("Size: {}", c2.size.clone());
+    gba::info!("[ALLOC] Size: {}", c2.size.clone());
     //gba::debug!("Position of free var 0x{:p}", &c2.free);
-    gba::info!("Free: {}", c2.free.clone());
+    gba::info!("[ALLOC] Free: {}", c2.free.clone());
     //assert_eq!(c2.size, size);
     //assert_eq!(control_block.size, size);
     //assert_eq!(control.size, c2.size.clone())
@@ -160,7 +164,7 @@ fn merge_free_blocks(ptr: *mut BlockAllocate) {
     }
     loop {
         if (ptr_to_next_block >= EWRAM_END) {
-            gba::warn!("Merged with last Block ");
+            gba::warn!("[ALLOC] Merged with last Block ");
             assert_eq!(ptr_to_next_block, EWRAM_END);
 
             break;
@@ -171,12 +175,12 @@ fn merge_free_blocks(ptr: *mut BlockAllocate) {
         if c2.free {
             c1.size += c2.size;
             ptr_to_next_block += c2.size;
-            gba::warn!("Merging two Blocks.. new Block {:?}", c1);
+            gba::warn!("[ALLOC] Merging two Blocks.. new Block {:?}", c1);
 
-            gba::warn!("Next Block should be at 0x{:x}", ptr_to_next_block);
+            gba::warn!("[ALLOC] Next Block should be at 0x{:x}", ptr_to_next_block);
         } else {
-            gba::warn!("Stop Merging, Block c2 is not free");
-            gba::warn!("BLOCKINFO {:?}", c2);
+            gba::warn!("[ALLOC] Stop Merging, Block c2 is not free");
+            gba::warn!("[ALLOC] BLOCKINFO {:?}", c2);
             assert_eq!(c2.free, false);
             break;
         }

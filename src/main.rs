@@ -74,13 +74,13 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
         ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
     }
 
-    gba::info!("Starting game!");
+    gba::info!("[MAIN] Starting game!");
 
     let mut game = Game::init();
     // Start game loop
     game.run();
     // Don't return
-    gba::debug!("Done running game loop, looping forever");
+    gba::debug!("[MAIN] Done running game loop, looping forever");
     loop {}
 }
 
@@ -100,12 +100,12 @@ fn test_runner(tests: &[&dyn Fn()]) {
     unsafe {
         ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
     }
-    gba::info!("Running {} tests", tests.len());
+    gba::info!("[TEST RUNNER] Running {} tests", tests.len());
     // Actually run tests
     for test in tests {
         test();
     }
-    gba::info!("{}", "[ALL TESTS DONE]".fg(green()));
+    gba::info!("[TEST RUNNER] {}", "ALL TESTS DONE".fg(green()));
 
     // Because mGBA has no feature to terminate emulation from within the game with a successful
     // exit code, we have to use a hack here.

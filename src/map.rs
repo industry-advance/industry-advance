@@ -3,7 +3,7 @@ use crate::background::{LargeBackground, SCREENBLOCK_SIZE_IN_U8};
 use alloc::vec::Vec;
 
 #[derive(Debug)]
-pub(crate) struct Map<'a> {
+pub struct Map<'a> {
     bg: LargeBackground<'a>,
 }
 
@@ -13,7 +13,7 @@ impl<'a> Map<'a> {
     /// . Their number must match x*y and they must be in the vector in a left-to-right, top-to-bottom order.
     /// Each tilemap must be SCREENBLOCK_SIZE_IN_U8 large.
     /// If it isn't, this function will panic.
-    pub(crate) fn new_map(
+    pub fn new_map(
         palette: &'a [u16],
         x: usize,
         y: usize,
@@ -32,5 +32,10 @@ impl<'a> Map<'a> {
         }
         let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
         return Map { bg: bg };
+    }
+
+    /// Scroll the map by xy pixels.
+    pub fn scroll(&mut self, x: i32, y: i32) {
+        self.bg.scroll(x, y);
     }
 }

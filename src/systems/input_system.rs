@@ -29,15 +29,19 @@ impl InputSystem {
                 if e_movement_component.input_controlled {
                     // Pass D-Pad movement onto objects
                     if keys.left() {
+                        gba::info!("[INPUT] D-Pad left pressed");
                         e_movement_component.x_velocity = e_movement_component.x_velocity - 1;
                     }
                     if keys.right() {
+                        gba::info!("[INPUT] D-Pad right pressed");
                         e_movement_component.x_velocity = e_movement_component.x_velocity + 1;
                     }
                     if keys.up() {
+                        gba::info!("[INPUT] D-Pad up pressed");
                         e_movement_component.y_velocity = e_movement_component.y_velocity - 1;
                     }
-                    if keys.up() {
+                    if keys.down() {
+                        gba::info!("[INPUT] D-Pad down pressed");
                         e_movement_component.y_velocity = e_movement_component.y_velocity + 1;
                     }
                 }
