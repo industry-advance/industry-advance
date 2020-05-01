@@ -71,16 +71,16 @@ impl<'a> LargeBackground<'a> {
         palette: &'a [u16],
     ) -> LargeBackground<'a> {
         // Ensure we have at least 1 backing tilemap
-        if backing_tilemaps.len() < 1 {
+        if backing_tilemaps.is_empty() {
             panic!("No backing tilemaps supplied");
         }
 
-        if backing_tilemaps[0].len() < 1 {
+        if backing_tilemaps[0].is_empty() {
             panic!("No backing tilemaps supplied");
         }
 
         let mut lbg: LargeBackground<'a> = LargeBackground {
-            backing_tilemaps: backing_tilemaps,
+            backing_tilemaps,
             curr_x: 0,
             curr_y: 0,
             sb0_curr_backing: None,
@@ -147,7 +147,7 @@ impl<'a> LargeBackground<'a> {
         backing_map_y: usize,
     ) {
         // Mark the screenblock as occupied
-        let mut screenblock_index: usize = 0xDEAD;
+        let mut screenblock_index: usize;
         use BGScreenblockSlots::*;
         match slot {
             Zero => {
@@ -227,42 +227,41 @@ impl<'a> LargeBackground<'a> {
 
         // For each corner, check whether the backing tilemaps are already present in VRAM
         // TODO: Ensure they're in the correct one of the four screenblocks
-        match self.get_backing_tilemap_loaded_slot(new_top_left_backing_x, new_top_left_backing_y) {
-            None => self.load_backing_tilemap(
+        if let None =
+            self.get_backing_tilemap_loaded_slot(new_top_left_backing_x, new_top_left_backing_y)
+        {
+            self.load_backing_tilemap(
                 BGScreenblockSlots::Zero,
                 new_top_left_backing_x,
                 new_top_left_backing_y,
-            ),
-            _ => (),
+            );
         }
-        match self.get_backing_tilemap_loaded_slot(new_top_right_backing_x, new_top_right_backing_y)
+        if let None =
+            self.get_backing_tilemap_loaded_slot(new_top_right_backing_x, new_top_right_backing_y)
         {
-            None => self.load_backing_tilemap(
+            self.load_backing_tilemap(
                 BGScreenblockSlots::One,
                 new_top_right_backing_x,
                 new_top_right_backing_y,
-            ),
-            _ => (),
+            );
         }
-        match self
+        if let None = self
             .get_backing_tilemap_loaded_slot(new_bottom_right_backing_x, new_bottom_right_backing_y)
         {
-            None => self.load_backing_tilemap(
+            self.load_backing_tilemap(
                 BGScreenblockSlots::Three,
                 new_bottom_right_backing_x,
                 new_bottom_right_backing_y,
-            ),
-            _ => (),
+            );
         }
-        match self
+        if let None = self
             .get_backing_tilemap_loaded_slot(new_bottom_left_backing_x, new_bottom_left_backing_y)
         {
-            None => self.load_backing_tilemap(
+            self.load_backing_tilemap(
                 BGScreenblockSlots::Two,
                 new_bottom_left_backing_x,
                 new_bottom_left_backing_y,
-            ),
-            _ => (),
+            );
         }
 
         // Perform actual hardware scroll
@@ -279,13 +278,13 @@ impl<'a> LargeBackground<'a> {
         backing_y: usize,
     ) -> Option<BGScreenblockSlots> {
         match self.sb0_curr_backing {
-            Some((x, y)) => return Some(BGScreenblockSlots::Zero),
+            Some((_, _)) => return Some(BGScreenblockSlots::Zero),
             None => match self.sb1_curr_backing {
-                Some((x, y)) => return Some(BGScreenblockSlots::One),
+                Some((_, _)) => return Some(BGScreenblockSlots::One),
                 None => match self.sb2_curr_backing {
-                    Some((x, y)) => return Some(BGScreenblockSlots::Two),
+                    Some((_, _)) => return Some(BGScreenblockSlots::Two),
                     None => match self.sb3_curr_backing {
-                        Some((x, y)) => return Some(BGScreenblockSlots::Three),
+                        Some((_, _)) => return Some(BGScreenblockSlots::Three),
                         None => return None,
                     },
                 },

@@ -10,6 +10,9 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_in_array_repeat_expressions)]
+// Disable a bunch of clippy lints I disagree with
+#![allow(clippy::needless_return)]
+#![allow(clippy::module_inception)]
 
 #[macro_use]
 extern crate alloc;
@@ -21,7 +24,6 @@ use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 use gbfs_rs::GBFSFilesystem;
 
-#[macro_use]
 extern crate arrayref;
 
 mod components;
@@ -33,12 +35,11 @@ mod sprite;
 mod systems;
 
 use core::fmt::Write;
-use core::str::FromStr;
 
 use game::Game;
 
 // Filesystem containing assets
-const FS_DATA: &'static [u8] = include_bytes!("../assets.gbfs");
+const FS_DATA: &[u8] = include_bytes!("../assets.gbfs");
 const FS: GBFSFilesystem<'static> = GBFSFilesystem::from_slice(FS_DATA);
 
 #[panic_handler]

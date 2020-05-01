@@ -35,7 +35,7 @@ impl<'a> Map<'a> {
             }
         }
         let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
-        return Map { bg: bg };
+        return Map { bg };
     }
 
     /// Loads a test map from the filesystem.

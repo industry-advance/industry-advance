@@ -6,13 +6,9 @@ use crate::systems::{InputSystem, MovementSystem};
 
 use crate::FS;
 
-use alloc::boxed::Box;
-use alloc::{vec, vec::Vec};
-use core::convert::TryInto; // One is a macro, the other a namespace
+use alloc::vec::Vec;
 
-use crate::ewram_alloc;
-
-use gba::io::display::{DisplayControlSetting, DISPCNT, VBLANK_SCANLINE, VCOUNT};
+use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
@@ -73,9 +69,9 @@ impl<'a> Game<'a> {
 
         return Game {
             sprite_alloc: sprite_allocator,
-            map: map,
+            map,
             entities: e,
-            live_entity_ids: live_entity_ids,
+            live_entity_ids,
             input_system: InputSystem::init(),
         };
     }

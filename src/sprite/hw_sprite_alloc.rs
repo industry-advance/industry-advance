@@ -57,7 +57,7 @@ impl HWSpriteAllocator {
         return HWSpriteAllocator {
             allocation_map: entries,
             palette: pal,
-            oam_free_list: oam_free_list,
+            oam_free_list,
         };
     }
 
@@ -130,7 +130,7 @@ impl HWSpriteAllocator {
 
         return HWSpriteHandle {
             starting_block: starting_vram_tile_id,
-            oam_slot: oam_slot,
+            oam_slot,
         };
     }
 
@@ -166,7 +166,7 @@ impl HWSpriteAllocator {
     /// Find a free slot in OAM.
     /// If none are available, panic.
     fn find_free_oam_slot(&self) -> usize {
-        match self.oam_free_list.iter().position(|&x| x == false) {
+        match self.oam_free_list.iter().position(|&x| !x) {
             Some(pos) => pos,
             None => panic!("Attempt to create sprite when OAM is full"),
         }
@@ -180,7 +180,7 @@ impl HWSpriteAllocator {
                 let mut free_blocks: usize = 1;
                 for j in 1..num_blocks {
                     if self.allocation_map[i + j] == SpriteBlockState::Unused {
-                        free_blocks = free_blocks + 1;
+                        free_blocks += 1;
                     } else {
                         break;
                     }
@@ -209,7 +209,7 @@ impl HWSpriteAllocator {
             } else {
                 break;
             }
-            i = i + 1;
+            i += 1;
         }
 
         // Set the sprite to not render in OAM

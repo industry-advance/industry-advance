@@ -3,8 +3,6 @@ use core::mem;
 
 use core::ptr;
 
-use gba;
-
 pub const EWRAM_BASE: usize = 0x200_0000;
 pub const EWRAM_END: usize = 0x203_3FF0;
 // Something seems to be in 0x203FFF
@@ -42,7 +40,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
             + if layout.size() % 4 == 0 {
                 0
             } else {
-                (4 - layout.size() % 4)
+                4 - layout.size() % 4
             };
 
         // Current block we're checking for allocation eligibility
@@ -66,7 +64,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                 // new size is allocated Bytes + size of Control Block\
                 current_block.size = needed_bytes;
                 current_block.free = false;
-                if (old_size - current_block.size >= 16) {
+                if old_size - current_block.size >= 16 {
                     alloc_info!(
                         "[ALLOC] CALLING CREATE NEW BLOCK MEM 0x{:x} SIZE {}",
                         current_block_position + current_block.size,
@@ -87,17 +85,17 @@ unsafe impl GlobalAlloc for MyBigAllocator {
                 );
                 ptr::write_volatile::<BlockAllocate>(
                     current_block_position as *mut BlockAllocate,
-                    current_block.clone(),
+                    current_block,
                 );
 
                 return (current_block_position + mem::size_of::<BlockAllocate>()) as *mut u8;
             }
             // Check next block
             // We have to move layout.size() + mem::size_of::<BlockAllocate>() positions
-            current_block_position = current_block_position + current_block.size;
+            current_block_position += current_block.size;
         }
         // If no block could be found, return a null pointer
-        return 0 as *mut u8;
+        return ptr::null_mut::<u8>();
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -110,7 +108,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
         current_block.free = true;
         ptr::write_volatile::<BlockAllocate>(
             ((ptr as usize) - mem::size_of::<BlockAllocate>()) as *mut BlockAllocate,
-            current_block.clone(),
+            current_block,
         );
 
         alloc_info!(
@@ -128,14 +126,14 @@ unsafe impl GlobalAlloc for MyBigAllocator {
 }
 
 /// Allocate block of `size` at address `base`
-pub fn create_new_block(base: usize, size: usize) {
+pub unsafe fn create_new_block(base: usize, size: usize) {
     alloc_info!(
         "[ALLOC] New free Block with size {} on Mem: 0x{:x}",
         size.clone(),
         base.clone()
     );
     let control = BlockAllocate {
-        size: size,
+        size,
         marker: 0xDEAD,
         free: true,
         filler: false,
@@ -147,11 +145,9 @@ pub fn create_new_block(base: usize, size: usize) {
     let c2: BlockAllocate;
     let pointer: *mut BlockAllocate = base as *mut BlockAllocate;
     alloc_info!("[ALLOC] Pointer To Write Base: {:p}", pointer);
-    unsafe {
-        ptr::write_volatile(pointer, control);
+    ptr::write_volatile(pointer, control);
 
-        c2 = ptr::read_volatile::<BlockAllocate>(pointer);
-    }
+    c2 = ptr::read_volatile::<BlockAllocate>(pointer);
     alloc_info!("[ALLOC] Pointer To Write Base (AW): {:p}", pointer);
 
     alloc_info!("[ALLOC] C2 Perspective");
@@ -176,7 +172,7 @@ fn merge_free_blocks(ptr: *mut BlockAllocate) {
         return;
     }
     loop {
-        if (ptr_to_next_block >= EWRAM_END) {
+        if ptr_to_next_block >= EWRAM_END {
             alloc_info!("[ALLOC] Merged with last Block ");
             assert_eq!(ptr_to_next_block, EWRAM_END);
 
