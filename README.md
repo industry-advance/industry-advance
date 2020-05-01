@@ -11,11 +11,6 @@ Once set up, all that's needed is to run `cargo make assets && cargo make run-qt
 
 *NOTE:* If you change the Mindustry assets/the asset generation script you have to run `cargo make assets` manually. The process is manual because rebuilding them takes a long time.
 
-## Update CI build environment
-
-The docker container for CI is built with nix as well in order to ensure reproducibility between dev and test environments.
-
-To update the container, run `nix-build docker.nix`, then load the generated image tarball with `docker load -i /path/to/tarball` and push it to the image repository.
 
 ## Further reading
 
