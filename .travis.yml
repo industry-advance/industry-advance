@@ -2,6 +2,8 @@ language: nix
 nix: 2.3.3
 jobs:
   include:
+    - stage: "Lint"
+      script: nix-shell --pure --run "cargo make assets && cargo xclippy"
     - stage: "Build"
       script: nix-shell --pure --run "cargo make assets && cargo make"
     - stage: "Test"
