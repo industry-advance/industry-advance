@@ -14,11 +14,6 @@
 #[macro_use]
 extern crate alloc;
 
-// TODO: Consider moving this stuff into gba crate (there's an open issue for that)
-pub(crate) const EWRAM_BASE: usize = 0x200_0000;
-pub(crate) const EWRAM_END: usize = 0x203_FFFF;
-pub(crate) const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
-
 #[cfg(test)]
 use ansi_rgb::green;
 
@@ -29,7 +24,6 @@ use gbfs_rs::GBFSFilesystem;
 #[macro_use]
 extern crate arrayref;
 
-mod background;
 mod components;
 mod entities;
 mod ewram_alloc;
