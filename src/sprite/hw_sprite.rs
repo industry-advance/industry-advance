@@ -1,11 +1,11 @@
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use gba::oam::{ObjectShape, ObjectSize};
-use gba::vram::Tile8bpp;
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
 /// The sizes of sprite that the hardware supports, and are therefore possible to allocate.
-pub(crate) enum HWSpriteSize {
+pub enum HWSpriteSize {
     EightByEight,
     SixteenBySixteen,
     ThirtyTwoByThirtyTwo,
@@ -77,41 +77,5 @@ impl HWSpriteSize {
 
             SixtyFourByThirtyTwo => (Three, Horizontal),
         }
-    }
-}
-
-/// A hardware sprite in a representation ready to be loaded into VRAM by the sprite allocator.
-/// Currently, only 8bpp color sprites are supported.
-pub(crate) struct HWSprite {
-    pub tiles: Vec<Tile8bpp>,
-    pub size: HWSpriteSize,
-}
-
-impl HWSprite {
-    /// Takes a slice of u32 representing the 8x8 tiles of a sprite in GBA format
-    /// and a target sprite size, and creates a ready-to-be-allocated hardware sprite.
-    ///
-    /// The sprite must be using 8bpp color mode and 1D mapping.
-    ///
-    /// If the slice is larger than the target size, the function panics.
-    pub fn from_u32_slice(tile_fragments: &[u32], size: HWSpriteSize) -> HWSprite {
-        let expected_tile_fragments: usize = (size.to_size_in_bytes() / 4).try_into().unwrap();
-        if tile_fragments.len() != expected_tile_fragments {
-            panic!("Attempt to create hardware sprite with incorrect amount of data for size");
-        }
-
-        // Chunk the tiles up into Tile8bpp
-        let mut tiles: Vec<Tile8bpp> = Vec::with_capacity(8);
-        for tile_as_u32_chunk in tile_fragments.chunks_exact(16) {
-            let chunk_with_known_length: &[u32; 16] = tile_as_u32_chunk
-                .try_into()
-                .expect("This should not happen unless chunks_exact() is broken");
-            tiles.push(Tile8bpp(*chunk_with_known_length));
-        }
-
-        return HWSprite {
-            tiles: tiles,
-            size: size,
-        };
     }
 }

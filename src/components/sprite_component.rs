@@ -1,4 +1,4 @@
-use crate::sprite::{HWSprite, HWSpriteAllocator, HWSpriteHandle, HWSpriteSize};
+use crate::sprite::{HWSpriteAllocator, HWSpriteHandle, HWSpriteSize};
 /// An ECS component which controls the on-screen sprite of the entity.
 pub(crate) struct SpriteComponent {
     handle: HWSpriteHandle,
@@ -9,12 +9,14 @@ impl SpriteComponent {
     /// The sprite allocator is expected to be initialized.
     pub fn init(
         alloc: &mut HWSpriteAllocator,
-        sprite_data: &[u32],
+        sprite_filename: &str,
         sprite_size: HWSpriteSize,
     ) -> SpriteComponent {
-        let mut handle = alloc.alloc(HWSprite::from_u32_slice(sprite_data, sprite_size));
-        // TODO: Consider whether to make visible by default
-        return SpriteComponent { handle: handle };
+        let sprite_handle = alloc.alloc_from_fs_file(sprite_filename, sprite_size);
+        sprite_handle.set_visibility(true);
+        return SpriteComponent {
+            handle: sprite_handle,
+        };
     }
 
     /// Returns a handle to the underlying sprite.

@@ -14,16 +14,16 @@
 use core::convert::TryInto;
 
 use alloc::boxed::Box;
-use gba::{oam, palram, vram, Color};
+use gba::{oam, palram, Color};
 
 #[cfg(debug_assertions)]
 use gba::debug;
 
-use super::HWSprite;
+use super::{sprite_dma, HWSpriteSize};
 
 const LOWER_SPRITE_BLOCK_AS_CHARBLOCK: usize = 4;
 const UPPER_SPRITE_BLOCK_AS_CHARBLOCK: usize = 5;
-
+const NUM_TILE_BLOCKS_IN_CHARBLOCK: usize = 512;
 #[derive(PartialEq)]
 enum SpriteBlockState {
     Unused,
@@ -80,61 +80,67 @@ impl HWSpriteAllocator {
         }
     }
 
+    /// Allocate the given sprite in VRAM from data contained in the file with the given name.
+    /// A sprite size has to be supplied because several different shapes of sprites share the same size.
+    /// TODO: Store sprite size info in the filesystem, so there's no need to keep track of it in code
+    ///
+    /// Panics if the file doesn't exist.
+    pub fn alloc_from_fs_file(
+        &mut self,
+        filename: &str,
+        sprite_size: HWSpriteSize,
+    ) -> HWSpriteHandle {
+        let sprite_data = crate::FS
+            .get_file_data_by_name_as_u32_slice(filename.try_into().unwrap())
+            .expect("Failed to find sprite with given name in filesystem");
+        return self.alloc(sprite_data, sprite_size);
+    }
+
     /// Allocate the given sprite in VRAM.
     ///
     /// This will panic if insufficient space is available or too many sprites are already active.
-    pub fn alloc(&mut self, sprite: HWSprite) -> HWSpriteHandle {
+    pub fn alloc(&mut self, sprite_data: &[u32], sprite_size: HWSpriteSize) -> HWSpriteHandle {
         // Find first spot with enough contiguous free blocks to hold the sprite
-        let num_32b_blocks = sprite.size.to_num_of_32_byte_blocks();
-        let begin_index = self
+        let num_32b_blocks = sprite_size.to_num_of_32_byte_blocks();
+        let starting_vram_tile_id = self
             .find_contiguous_free_blocks(num_32b_blocks)
             .expect("No contiguous free block of VRAM available to allocate hardware sprite");
 
-        #[cfg(debug_assertions)]
-        debug!(
+        gba::info!(
             "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
-            begin_index, num_32b_blocks
+            starting_vram_tile_id,
+            num_32b_blocks
         );
 
-        // Sprites are stored across 2 charblocks.
-        let mut charblock_index: usize = 0xDD; // Illegal values, will be replaced below
-        let mut slot_in_charblock: usize = 0xDD;
-        if begin_index < 512 {
-            charblock_index = LOWER_SPRITE_BLOCK_AS_CHARBLOCK;
-            slot_in_charblock = begin_index / 2;
-        } else {
-            charblock_index = UPPER_SPRITE_BLOCK_AS_CHARBLOCK;
-            slot_in_charblock = (begin_index - 512) / 2;
-        }
-        let charblock = vram::get_8bpp_character_block(charblock_index);
-        // FIXME: Handle case where sprite is in boundary between 2 charblocks
-        for (i, tile) in sprite.tiles.into_iter().enumerate() {
-            charblock.index(slot_in_charblock + i).write(tile);
-        }
+        // Copy the sprite into VRAM using DMA
+        sprite_dma::dma_copy_sprite(sprite_data, starting_vram_tile_id, sprite_size);
 
         // Assign a slot in OAM
         let oam_slot = self.find_free_oam_slot();
         self.oam_free_list[oam_slot] = true;
-        let (size, shape) = sprite.size.to_obj_size_and_shape();
-        let starting_vram_tile_id: u16 = ((charblock_index * 256) + (slot_in_charblock * 2))
-            .try_into()
-            .unwrap();
-        self.prepare_oam_slot(starting_vram_tile_id, oam_slot, size, shape);
+        let (size, shape) = sprite_size.to_obj_size_and_shape();
+
+        self.allocate_oam_slot(
+            starting_vram_tile_id.try_into().unwrap(),
+            oam_slot,
+            size,
+            shape,
+        );
 
         // Mark blocks as occupied
-        self.allocation_map[begin_index] = SpriteBlockState::Used;
+        self.allocation_map[starting_vram_tile_id] = SpriteBlockState::Used;
         for i in 1..num_32b_blocks {
-            self.allocation_map[begin_index + i] = SpriteBlockState::Continue;
+            self.allocation_map[starting_vram_tile_id + i] = SpriteBlockState::Continue;
         }
 
         return HWSpriteHandle {
-            starting_block: begin_index,
+            starting_block: starting_vram_tile_id,
             oam_slot: oam_slot,
         };
     }
 
     /// Prepares a slot in OAM for the sprite.
-    fn prepare_oam_slot(
+    fn allocate_oam_slot(
         &self,
         starting_vram_tile_id: u16,
         oam_slot: usize,

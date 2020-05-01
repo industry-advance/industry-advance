@@ -14,7 +14,6 @@ use crate::ewram_alloc;
 
 use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
-use gbfs_rs::*;
 use tiny_ecs::Entities;
 
 #[allow(dead_code)] // Some struct fields not used after construction right now, remove once changed
@@ -83,15 +82,8 @@ impl<'a> Game<'a> {
         let mut live_entity_ids = Vec::new();
 
         // Initialize the player entity
-        let player_id = entities::add_player(
-            &mut e,
-            &mut sprite_allocator,
-            &FS.get_file_data_by_name_as_u32_slice(
-                Filename::try_from_str("dart_shipTiles").unwrap(),
-            )
-            .unwrap(),
-        )
-        .expect("Failed to initialize player entity");
+        let player_id = entities::add_player(&mut e, &mut sprite_allocator)
+            .expect("Failed to initialize player entity");
         live_entity_ids.push(player_id);
         // Put the player at the center of the screen
         let mut components = e.borrow_mut::<SpriteComponent>().unwrap();
