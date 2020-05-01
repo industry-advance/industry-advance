@@ -5,20 +5,22 @@ use alloc::vec::Vec;
 use gba::io::{background, display, dma};
 use gba::{palram, vram, Color};
 
-// Screen size in pixels
+/// Screen size in pixels
 const SCREEN_HEIGHT: usize = 160;
 const SCREEN_WIDTH: usize = 240;
 
+/// Size of a screenblock expressed as number of bytes
 pub const SCREENBLOCK_SIZE_IN_U8: usize = 32 * 32 * 2;
 const TILE_SIZE_IN_PX: usize = 8;
+/// Length of the edge of a single backing tilemap part
 const BACKING_MAP_LENGTH_IN_TILES: usize = 32;
 
-// Charblock to use for tiles
+/// Charblock to use for tiles
 const CHARBLOCK: usize = 0;
-// Screenblock to start at for loading backing tilemaps
+/// Screenblock to start at for loading backing tilemaps
 const SCREEN_BASE_BLOCK: usize = 16;
 
-// Used for DMA
+/// Used for DMA
 const SCREENBLOCK_SIZE_BYTES: usize = 2 * 1024;
 const CHARBLOCK_SIZE_BYTES: usize = 16 * 1024;
 
@@ -95,9 +97,8 @@ impl<'a> LargeBackground<'a> {
 
         // Use DMA to load tiles into VRAM
         // We only use charblock 0 for now.
-        // TODO: Support additional charblocks
         if tiles.len() > (CHARBLOCK_SIZE_BYTES / 4) {
-            panic!("Too many tiles!");
+            panic!("Too many tiles in charblock!");
         }
         unsafe {
             dma::DMA3::set_source(tiles.as_ptr());
@@ -129,7 +130,8 @@ impl<'a> LargeBackground<'a> {
             .with_char_base_block(CHARBLOCK.try_into().unwrap())
             .with_screen_base_block(SCREEN_BASE_BLOCK.try_into().unwrap())
             .with_is_8bpp(false)
-            .with_size(background::BGSize::Three);
+            .with_size(background::BGSize::Three)
+            .with_bg_priority(3);
         background::BG0CNT.write(bg_settings);
         let dispcnt = display::display_control();
         display::set_display_control(dispcnt.with_bg0(true).with_force_vblank(false));
@@ -168,13 +170,17 @@ impl<'a> LargeBackground<'a> {
         }
 
         let tilemap_ptr = self.backing_tilemaps[backing_map_x][backing_map_y].as_ptr();
-        // Use DMA to speed up loading (and because I want to try it)
+        // Use DMA to speed up loading
+        let dest_ptr =
+            (vram::VRAM_BASE_USIZE + (screenblock_index * SCREENBLOCK_SIZE_BYTES)) as *mut u32;
+        let num_u32s_to_copy: u16 = self.backing_tilemaps[backing_map_x][backing_map_y]
+            .len()
+            .try_into()
+            .unwrap();
         unsafe {
             dma::DMA3::set_source(tilemap_ptr as *const u32);
-            dma::DMA3::set_dest(
-                (vram::VRAM_BASE_USIZE + (screenblock_index * SCREENBLOCK_SIZE_BYTES)) as *mut u32,
-            );
-            dma::DMA3::set_count((SCREENBLOCK_SIZE_BYTES / 4).try_into().unwrap());
+            dma::DMA3::set_dest(dest_ptr);
+            dma::DMA3::set_count(num_u32s_to_copy);
             dma::DMA3::set_control(
                 dma::DMAControlSetting::new()
                     .with_enabled(true)

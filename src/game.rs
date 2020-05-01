@@ -12,7 +12,7 @@ use core::convert::TryInto; // One is a macro, the other a namespace
 
 use crate::ewram_alloc;
 
-use gba::io::display::{VBLANK_SCANLINE, VCOUNT};
+use gba::io::display::{DisplayControlSetting, DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
@@ -40,7 +40,6 @@ impl<'a> Game<'a> {
         gba::debug!("[GAME] Loading game data from FS");
 
         // Initialize hardware sprite management
-
         gba::debug!("Initializing sprite allocator");
         let mut sprite_allocator = HWSpriteAllocator::new(
             &FS.get_file_data_by_name_as_u16_slice(
@@ -49,6 +48,8 @@ impl<'a> Game<'a> {
             .unwrap(),
         );
         sprite_allocator.init();
+        // Ensure sprites are visible
+        DISPCNT.write(DISPCNT.read().with_obj(true).with_oam_memory_1d(true));
 
         let map_0: &'static [u8] = FS
             .get_file_data_by_name(Filename::try_from_str("testmap_0Map").unwrap())

@@ -16,15 +16,9 @@ use core::convert::TryInto;
 use alloc::boxed::Box;
 use gba::{oam, palram, Color};
 
-#[cfg(debug_assertions)]
-use gba::debug;
-
 use super::{sprite_dma, HWSpriteSize};
 
-const LOWER_SPRITE_BLOCK_AS_CHARBLOCK: usize = 4;
-const UPPER_SPRITE_BLOCK_AS_CHARBLOCK: usize = 5;
-const NUM_TILE_BLOCKS_IN_CHARBLOCK: usize = 512;
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum SpriteBlockState {
     Unused,
     Used,
@@ -69,6 +63,7 @@ impl HWSpriteAllocator {
 
     /// Initialize the allocator by copying the palette into VRAM.
     ///  
+    /// Note that you're still required to manually enable object display in DISPCNT in order to see the sprites.
     /// # Safety
     ///
     /// Any other code manipulating the sprite palette after
