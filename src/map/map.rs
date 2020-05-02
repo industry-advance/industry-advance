@@ -34,7 +34,10 @@ impl<'a> Map<'a> {
                 two_d_indexed_tilemaps[i].push(tilemaps[i * x + j]);
             }
         }
-        let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
+        let mut bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
+
+        // Ensure we don't start at the edge of the map
+        bg.scroll(128, 128);
         return Map { bg };
     }
 
@@ -70,6 +73,8 @@ impl<'a> Map<'a> {
 
     /// Scroll the map by xy pixels.
     pub fn scroll(&mut self, x: i32, y: i32) {
-        self.bg.scroll(x, y);
+        if x != 0 || y != 0 {
+            self.bg.scroll(x, y);
+        }
     }
 }

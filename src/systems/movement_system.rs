@@ -6,14 +6,14 @@ use core::convert::TryInto;
 
 /// Maximum player speed, in pixels per frame
 /// A value of 1 means the player can move at most 60 pixels or 7.5 tiles a second.
-const PLAYER_MAX_POS_VELOCITY: Velocity =
+const PLAYER_MAX_VELOCITY: Velocity =
     Velocity::from_bits(0b0000_0000_0000_0000_0000_0001_0000_0000); // 1
-const PLAYER_MAX_NEG_VELOCITY: Velocity =
+const PLAYER_MIN_VELOCITY: Velocity =
     Velocity::from_bits(-0b0000_0000_0000_0000_0000_0001_0000_0001); // -1
 
 /// How much the player's speed changes for each frame the button is held down, in pixels per second.
 const VELOCITY_DELTA_PER_FRAME: Velocity =
-    Velocity::from_bits(0b0000_0000_0000_0000_0000_0000_1000_0000); // 0.1
+    Velocity::from_bits(0b0000_0000_0000_0000_0000_0000_01101); // 0.1
 
 use tiny_ecs::{ECSError, Entities};
 /// An ECS system which moves entity sprites based on their velocity
@@ -50,7 +50,8 @@ impl MovementSystem {
                     {
                         // Subtract the number of whole pixels we can scroll from the accumulated movement
                         let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
-                        map.scroll(map_delta_x, map_delta_y);
+                        // Map scrolling happens in the opposite direction to where the player's moving
+                        map.scroll(-map_delta_x, -map_delta_y);
                     }
                 }
 
@@ -92,12 +93,12 @@ impl MovementSystem {
 /// Update an entity's position based on it's input component.
 fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponent) {
     // If the button is pressed, accelerate
-    if ic.left_pressed && mc.x_velocity > PLAYER_MAX_NEG_VELOCITY {
+    if ic.left_pressed && mc.x_velocity > PLAYER_MIN_VELOCITY {
         mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
         mc.pending_movement_delta_x -= mc.x_velocity;
-    // If the button isn't pressed, decelerate
-    } else if mc.x_velocity < ZERO_VELOCITY {
-        if mc.x_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+    // If the button isn't pressed and we aren't moving in the opposite direction, decelerate
+    } else if !ic.left_pressed && !ic.right_pressed && mc.x_velocity < ZERO_VELOCITY {
+        if mc.x_velocity > -VELOCITY_DELTA_PER_FRAME {
             mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
         // Make sure we don't overshoot and cause a drift into positive X velocity
         } else {
@@ -106,11 +107,11 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         mc.pending_movement_delta_x += mc.x_velocity;
     }
 
-    if ic.right_pressed && mc.x_velocity < PLAYER_MAX_POS_VELOCITY {
+    if ic.right_pressed && mc.x_velocity < PLAYER_MAX_VELOCITY {
         mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
         mc.pending_movement_delta_x += mc.x_velocity;
-    } else if mc.x_velocity > ZERO_VELOCITY {
-        if mc.x_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+    } else if !ic.right_pressed && !ic.left_pressed && mc.x_velocity > ZERO_VELOCITY {
+        if mc.x_velocity > VELOCITY_DELTA_PER_FRAME {
             mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
         } else {
             mc.x_velocity = ZERO_VELOCITY;
@@ -118,11 +119,13 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         mc.pending_movement_delta_x -= mc.x_velocity;
     }
 
-    if ic.up_pressed && mc.y_velocity > PLAYER_MAX_NEG_VELOCITY {
+    // If no buttons causing movement on the X axis are pressed, decelerate towards 0
+
+    if ic.up_pressed && mc.y_velocity > PLAYER_MIN_VELOCITY {
         mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
         mc.pending_movement_delta_y -= mc.y_velocity;
-    } else if mc.y_velocity < ZERO_VELOCITY {
-        if mc.y_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+    } else if !ic.up_pressed && !ic.down_pressed && mc.y_velocity < ZERO_VELOCITY {
+        if mc.y_velocity > -VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         } else {
             mc.y_velocity = ZERO_VELOCITY;
@@ -130,11 +133,11 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         mc.pending_movement_delta_y += mc.y_velocity;
     }
 
-    if ic.down_pressed && mc.y_velocity < PLAYER_MAX_POS_VELOCITY {
+    if ic.down_pressed && mc.y_velocity < PLAYER_MAX_VELOCITY {
         mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         mc.pending_movement_delta_y += mc.y_velocity;
-    } else if mc.y_velocity > ZERO_VELOCITY {
-        if mc.y_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+    } else if !ic.down_pressed && !ic.up_pressed && mc.y_velocity > ZERO_VELOCITY {
+        if mc.y_velocity > VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
         } else {
             mc.y_velocity = ZERO_VELOCITY;

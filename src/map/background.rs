@@ -200,17 +200,25 @@ impl<'a> LargeBackground<'a> {
     pub fn scroll(&mut self, x: i32, y: i32) {
         gba::info!("[BACKGROUND] Scrolling by X {}, Y {}", x, y);
         // New coords of the top-left screen corner
-        let new_top_left_x: i32 = self.curr_x + x;
-        let new_top_left_y: i32 = self.curr_y + y;
+        self.curr_x += x;
+        self.curr_y += y;
         // Ensure no negative coordinates would be visible on screen
-        if new_top_left_x < 0 || new_top_left_y < 0 {
+        if self.curr_x < 0 || self.curr_y < 0 {
             panic!("Attempt to scroll into negative coordinates");
         }
-        let new_top_left_x: usize = new_top_left_x.try_into().unwrap();
-        let new_top_left_y: usize = new_top_left_y.try_into().unwrap();
+        // Load new backing tilemaps if needed
+        self.ensure_correct_backing_tilemaps_are_loaded();
 
+        // Perform actual hardware scroll
+        background::BG0HOFS.write(self.curr_x.try_into().unwrap());
+        background::BG0VOFS.write(self.curr_y.try_into().unwrap());
+    }
+
+    fn ensure_correct_backing_tilemaps_are_loaded(&mut self) {
         // Calculate which backing tilemaps would be in view by scrolling
         // by checking where the 4 corners of the screen would end up in.
+        let new_top_left_x: usize = self.curr_x.try_into().unwrap();
+        let new_top_left_y: usize = self.curr_y.try_into().unwrap();
         let (
             (new_top_right_x, new_top_right_y),
             (new_bottom_right_x, new_bottom_right_y),
@@ -263,13 +271,6 @@ impl<'a> LargeBackground<'a> {
                 new_bottom_left_backing_y,
             );
         }
-
-        // Perform actual hardware scroll
-        background::BG0HOFS.write(new_top_left_x.try_into().unwrap());
-        background::BG0VOFS.write(new_top_left_y.try_into().unwrap());
-
-        self.curr_x = new_top_left_x.try_into().unwrap();
-        self.curr_y = new_top_left_y.try_into().unwrap();
     }
 
     fn get_backing_tilemap_loaded_slot(
