@@ -202,6 +202,8 @@ impl<'a> LargeBackground<'a> {
         // New coords of the top-left screen corner
         self.curr_x += x;
         self.curr_y += y;
+        gba::info!("X NOW {}", self.curr_x);
+        gba::info!("Y NOW {}", self.curr_y);
         // Ensure no negative coordinates would be visible on screen
         if self.curr_x < 0 || self.curr_y < 0 {
             panic!("Attempt to scroll into negative coordinates");

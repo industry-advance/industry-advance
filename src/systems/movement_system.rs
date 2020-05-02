@@ -40,7 +40,7 @@ impl MovementSystem {
                 let e_movement: &mut MovementComponent = movables.get_mut(*id).unwrap();
                 if ecs.entity_contains::<InputComponent>(*id) {
                     let e_input: &InputComponent = inputables.get(*id).unwrap();
-                    update_position_based_on_input(e_input, e_movement);
+                    update_movement_based_on_input(e_input, e_movement);
                 }
 
                 // Process scrolling the map around entities which the camera's centered on
@@ -51,7 +51,7 @@ impl MovementSystem {
                         // Subtract the number of whole pixels we can scroll from the accumulated movement
                         let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
                         // Map scrolling happens in the opposite direction to where the player's moving
-                        map.scroll(-map_delta_x, -map_delta_y);
+                        map.scroll(map_delta_x, map_delta_y);
                     }
                 }
 
@@ -91,14 +91,17 @@ impl MovementSystem {
 }
 
 /// Update an entity's position based on it's input component.
-fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponent) {
+fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponent) {
     // If the button is pressed, accelerate
-    if ic.left_pressed && mc.x_velocity > PLAYER_MIN_VELOCITY {
-        mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
-        mc.pending_movement_delta_x -= mc.x_velocity;
+    if ic.left_pressed {
+        gba::debug!("Should Only Move Left");
+        if mc.x_velocity > PLAYER_MIN_VELOCITY {
+            mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
+        }
+        mc.pending_movement_delta_x += mc.x_velocity;
     // If the button isn't pressed and we aren't moving in the opposite direction, decelerate
     } else if !ic.left_pressed && !ic.right_pressed && mc.x_velocity < ZERO_VELOCITY {
-        if mc.x_velocity > -VELOCITY_DELTA_PER_FRAME {
+        if mc.x_velocity < -VELOCITY_DELTA_PER_FRAME {
             mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
         // Make sure we don't overshoot and cause a drift into positive X velocity
         } else {
@@ -107,8 +110,11 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         mc.pending_movement_delta_x += mc.x_velocity;
     }
 
-    if ic.right_pressed && mc.x_velocity < PLAYER_MAX_VELOCITY {
-        mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
+    if ic.right_pressed {
+        gba::debug!("Should Only Move Right");
+        if mc.x_velocity < PLAYER_MAX_VELOCITY {
+            mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
+        }
         mc.pending_movement_delta_x += mc.x_velocity;
     } else if !ic.right_pressed && !ic.left_pressed && mc.x_velocity > ZERO_VELOCITY {
         if mc.x_velocity > VELOCITY_DELTA_PER_FRAME {
@@ -116,16 +122,20 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         } else {
             mc.x_velocity = ZERO_VELOCITY;
         }
-        mc.pending_movement_delta_x -= mc.x_velocity;
+        mc.pending_movement_delta_x += mc.x_velocity;
     }
 
     // If no buttons causing movement on the X axis are pressed, decelerate towards 0
 
-    if ic.up_pressed && mc.y_velocity > PLAYER_MIN_VELOCITY {
-        mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
-        mc.pending_movement_delta_y -= mc.y_velocity;
+    if ic.up_pressed {
+        gba::debug!("Should Only Move Up");
+        if mc.y_velocity > PLAYER_MIN_VELOCITY {
+            mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
+        }
+        mc.pending_movement_delta_y += mc.y_velocity;
     } else if !ic.up_pressed && !ic.down_pressed && mc.y_velocity < ZERO_VELOCITY {
-        if mc.y_velocity > -VELOCITY_DELTA_PER_FRAME {
+        gba::debug!("Seems i have veloc up left");
+        if mc.y_velocity < -VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         } else {
             mc.y_velocity = ZERO_VELOCITY;
@@ -133,15 +143,20 @@ fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         mc.pending_movement_delta_y += mc.y_velocity;
     }
 
-    if ic.down_pressed && mc.y_velocity < PLAYER_MAX_VELOCITY {
-        mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
+    if ic.down_pressed {
+        gba::debug!("Should Only Move Down");
+        if mc.y_velocity < PLAYER_MAX_VELOCITY{
+            mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
+        }
+        gba::debug!("Y_Velocity Now By {}", mc.y_velocity);
         mc.pending_movement_delta_y += mc.y_velocity;
     } else if !ic.down_pressed && !ic.up_pressed && mc.y_velocity > ZERO_VELOCITY {
+        gba::debug!("Seems i have veloc down left");
         if mc.y_velocity > VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
         } else {
             mc.y_velocity = ZERO_VELOCITY;
         }
-        mc.pending_movement_delta_y -= mc.y_velocity;
+        mc.pending_movement_delta_y += mc.y_velocity;
     }
 }
