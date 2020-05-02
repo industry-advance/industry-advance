@@ -52,6 +52,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixed"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c377839919bd296e5d7dd54c5ce062061b3b3dde1cd20f5e41e21002d2fb2c"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
 name = "gba"
 version = "0.4.0-pre"
 source = "git+https://github.com/rust-console/gba#af98b63aa1d96dea78def996b0b2d3a1b1b6fa4c"
@@ -97,6 +106,8 @@ version = "0.1.0"
 dependencies = [
  "ansi_rgb",
  "arrayref",
+ "arrayvec",
+ "fixed",
  "gba",
  "gbfs_rs",
  "tiny_ecs",

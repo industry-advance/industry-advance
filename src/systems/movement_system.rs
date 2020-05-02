@@ -1,7 +1,19 @@
-use crate::components::{MovementComponent, SpriteComponent};
+use crate::components::{InputComponent, MovementComponent, SpriteComponent};
 use crate::map::Map;
-use alloc::vec::Vec;
+use crate::shared_types::{Velocity, ZERO_VELOCITY};
+
 use core::convert::TryInto;
+
+/// Maximum player speed, in pixels per frame
+/// A value of 1 means the player can move at most 60 pixels or 7.5 tiles a second.
+const PLAYER_MAX_POS_VELOCITY: Velocity =
+    Velocity::from_bits(0b0000_0000_0000_0000_0000_0001_0000_0000); // 1
+const PLAYER_MAX_NEG_VELOCITY: Velocity =
+    Velocity::from_bits(-0b0000_0000_0000_0000_0000_0001_0000_0001); // -1
+
+/// How much the player's speed changes for each frame the button is held down, in pixels per second.
+const VELOCITY_DELTA_PER_FRAME: Velocity =
+    Velocity::from_bits(0b0000_0000_0000_0000_0000_0000_1000_0000); // 0.1
 
 use tiny_ecs::{ECSError, Entities};
 /// An ECS system which moves entity sprites based on their velocity
@@ -14,48 +26,119 @@ impl MovementSystem {
     /// If the camera should stay focused on the entity, move the map instead of the entity.
     pub fn tick(
         ecs: &mut Entities,
-        live_entities: &Vec<usize>,
+        live_entities: &[usize],
         map: &mut Map,
     ) -> Result<(), ECSError> {
-        let movables = ecs.borrow_mut::<MovementComponent>().unwrap();
+        let mut movables = ecs.borrow_mut::<MovementComponent>().unwrap();
+        let inputables = ecs.borrow_mut::<InputComponent>().unwrap();
         let mut sprites = ecs.borrow_mut::<SpriteComponent>().unwrap();
         for id in live_entities {
-            if ecs.entity_contains::<MovementComponent>(*id) {
-                let e_movement: &MovementComponent = movables.get(*id).unwrap();
-                if ecs.entity_contains::<SpriteComponent>(*id) {
-                    // Move the sprite if the camera should not stay centered on it, otherwise move the map background.
-                    if !e_movement.keep_camera_centered_on {
-                        let e_sprite: &mut SpriteComponent = sprites.get_mut(*id).unwrap();
-                        if e_movement.x_velocity != 0 || e_movement.y_velocity != 0 {
-                            let mut sprite_attrs = e_sprite.get_handle().read_obj_attributes();
-                            // Modify X position based on velocity
-                            // Requires some type voodoo because of signed + unsigned
-                            let new_row_coord: u16 = ((sprite_attrs.attr0.row_coordinate() as i32)
-                                + e_movement.x_velocity)
-                                .try_into()
-                                .unwrap();
-                            sprite_attrs.attr0 =
-                                sprite_attrs.attr0.with_row_coordinate(new_row_coord);
-                            // Modify Y position based on velocity
-                            let new_col_coord: u16 = ((sprite_attrs.attr1.col_coordinate() as i32)
-                                + e_movement.y_velocity)
-                                .try_into()
-                                .unwrap();
-                            sprite_attrs.attr1 =
-                                sprite_attrs.attr1.with_col_coordinate(new_col_coord);
+            // Process position updates caused by input
+            if ecs.entity_contains::<MovementComponent>(*id)
+                && ecs.entity_contains::<InputComponent>(*id)
+            {
+                let e_movement: &mut MovementComponent = movables.get_mut(*id).unwrap();
+                if ecs.entity_contains::<InputComponent>(*id) {
+                    let e_input: &InputComponent = inputables.get(*id).unwrap();
+                    update_position_based_on_input(e_input, e_movement);
+                }
 
-                            e_sprite.get_handle().write_obj_attributes(sprite_attrs);
-                        }
+                // Process scrolling the map around entities which the camera's centered on
+                if e_movement.keep_camera_centered_on {
+                    if e_movement.pending_movement_delta_x != ZERO_VELOCITY
+                        || e_movement.pending_movement_delta_y != ZERO_VELOCITY
+                    {
+                        // Subtract the number of whole pixels we can scroll from the accumulated movement
+                        let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
+                        map.scroll(map_delta_x, map_delta_y);
                     }
-                    //  Scroll the map/background.
-                    else {
-                        if e_movement.x_velocity != 0 || e_movement.y_velocity != 0 {
-                            map.scroll(e_movement.x_velocity, e_movement.y_velocity);
-                        }
+                }
+
+                // Process updating the sprite position on screen
+                if ecs.entity_contains::<SpriteComponent>(*id)
+                    && !e_movement.keep_camera_centered_on
+                {
+                    let e_sprite: &mut SpriteComponent = sprites.get_mut(*id).unwrap();
+                    if e_movement.pending_movement_delta_x != ZERO_VELOCITY
+                        || e_movement.pending_movement_delta_y != ZERO_VELOCITY
+                    {
+                        let (sprite_delta_x, sprite_delta_y) =
+                            e_movement.reset_pending_movement_delta();
+                        let mut sprite_attrs = e_sprite.get_handle().read_obj_attributes();
+
+                        // Modify sprite X position based on velocity
+                        let new_row_coord: u16 = (sprite_attrs.attr0.row_coordinate() as i32
+                            + sprite_delta_x)
+                            .try_into()
+                            .unwrap();
+                        sprite_attrs.attr0 = sprite_attrs.attr0.with_row_coordinate(new_row_coord);
+                        // Modify sprite Y position based on velocity
+                        let new_col_coord: u16 = (sprite_attrs.attr1.col_coordinate() as i32
+                            + sprite_delta_y)
+                            .try_into()
+                            .unwrap();
+                        sprite_attrs.attr1 =
+                            sprite_attrs.attr1.with_col_coordinate(new_col_coord as u16);
+
+                        e_sprite.get_handle().write_obj_attributes(sprite_attrs);
                     }
                 }
             }
         }
         return Ok(());
+    }
+}
+
+/// Update an entity's position based on it's input component.
+fn update_position_based_on_input(ic: &InputComponent, mc: &mut MovementComponent) {
+    // If the button is pressed, accelerate
+    if ic.left_pressed && mc.x_velocity > PLAYER_MAX_NEG_VELOCITY {
+        mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
+        mc.pending_movement_delta_x -= mc.x_velocity;
+    // If the button isn't pressed, decelerate
+    } else if mc.x_velocity < ZERO_VELOCITY {
+        if mc.x_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+            mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
+        // Make sure we don't overshoot and cause a drift into positive X velocity
+        } else {
+            mc.x_velocity = ZERO_VELOCITY;
+        }
+        mc.pending_movement_delta_x += mc.x_velocity;
+    }
+
+    if ic.right_pressed && mc.x_velocity < PLAYER_MAX_POS_VELOCITY {
+        mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
+        mc.pending_movement_delta_x += mc.x_velocity;
+    } else if mc.x_velocity > ZERO_VELOCITY {
+        if mc.x_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+            mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
+        } else {
+            mc.x_velocity = ZERO_VELOCITY;
+        }
+        mc.pending_movement_delta_x -= mc.x_velocity;
+    }
+
+    if ic.up_pressed && mc.y_velocity > PLAYER_MAX_NEG_VELOCITY {
+        mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
+        mc.pending_movement_delta_y -= mc.y_velocity;
+    } else if mc.y_velocity < ZERO_VELOCITY {
+        if mc.y_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+            mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
+        } else {
+            mc.y_velocity = ZERO_VELOCITY;
+        }
+        mc.pending_movement_delta_y += mc.y_velocity;
+    }
+
+    if ic.down_pressed && mc.y_velocity < PLAYER_MAX_POS_VELOCITY {
+        mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
+        mc.pending_movement_delta_y += mc.y_velocity;
+    } else if mc.y_velocity > ZERO_VELOCITY {
+        if mc.y_velocity.abs() > VELOCITY_DELTA_PER_FRAME {
+            mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
+        } else {
+            mc.y_velocity = ZERO_VELOCITY;
+        }
+        mc.pending_movement_delta_y -= mc.y_velocity;
     }
 }

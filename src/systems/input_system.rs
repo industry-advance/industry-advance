@@ -1,5 +1,5 @@
-use crate::components::MovementComponent;
-use alloc::vec::Vec;
+use crate::components::InputComponent;
+
 use gba::io::keypad;
 use tiny_ecs::{ECSError, Entities};
 
@@ -17,37 +17,47 @@ impl InputSystem {
     }
 
     /// Updates the input-related components of entities.
-    pub fn tick(&mut self, ecs: &mut Entities, live_entities: &Vec<usize>) -> Result<(), ECSError> {
+    pub fn tick(&mut self, ecs: &mut Entities, live_entities: &[usize]) -> Result<(), ECSError> {
         // Read the current state of the keypad
         let keys = keypad::read_key_input();
-
-        let mut movables = ecs.borrow_mut::<MovementComponent>().unwrap();
-        for id in live_entities {
-            if ecs.entity_contains::<MovementComponent>(*id) {
-                let mut e_movement_component: &mut MovementComponent =
-                    movables.get_mut(*id).unwrap();
-                if e_movement_component.input_controlled {
-                    // Pass D-Pad movement onto objects
+        // If the new state is different than the old one, do the updating
+        if keys != self.last_keys {
+            let mut movables = ecs.borrow_mut::<InputComponent>().unwrap();
+            for id in live_entities {
+                if ecs.entity_contains::<InputComponent>(*id) {
+                    let mut e_input_component: &mut InputComponent = movables.get_mut(*id).unwrap();
+                    // Pass D-Pad movement onto entity movement components
                     if keys.left() {
                         gba::info!("[INPUT] D-Pad left pressed");
-                        e_movement_component.x_velocity = e_movement_component.x_velocity - 1;
+                        e_input_component.left_pressed = true;
+                    } else if e_input_component.left_pressed {
+                        e_input_component.left_pressed = false;
+                        gba::info!("[INPUT] D-Pad left released");
                     }
                     if keys.right() {
                         gba::info!("[INPUT] D-Pad right pressed");
-                        e_movement_component.x_velocity = e_movement_component.x_velocity + 1;
+                        e_input_component.right_pressed = true;
+                    } else if e_input_component.right_pressed {
+                        e_input_component.right_pressed = false;
+                        gba::info!("[INPUT] D-Pad right released");
                     }
                     if keys.up() {
                         gba::info!("[INPUT] D-Pad up pressed");
-                        e_movement_component.y_velocity = e_movement_component.y_velocity - 1;
+                        e_input_component.up_pressed = true;
+                    } else if e_input_component.up_pressed {
+                        e_input_component.up_pressed = false;
+                        gba::info!("[INPUT] D-Pad up released");
                     }
                     if keys.down() {
                         gba::info!("[INPUT] D-Pad down pressed");
-                        e_movement_component.y_velocity = e_movement_component.y_velocity + 1;
+                        e_input_component.down_pressed = true;
+                    } else if e_input_component.down_pressed {
+                        e_input_component.down_pressed = false;
+                        gba::info!("[INPUT] D-Pad down released");
                     }
                 }
             }
         }
-
         // Store the keypad state for next call
         self.last_keys = keys;
 

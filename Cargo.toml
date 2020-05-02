@@ -13,5 +13,7 @@ opt-level = 3
 gba = {git = "https://github.com/rust-console/gba" } # We use features that aren't present in the latest release yet
 ansi_rgb = "*"
 arrayref = "0.3"
+arrayvec = {version = "0.5.1", default-features = false}
+fixed = "0.5.6"
 tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
 gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}
