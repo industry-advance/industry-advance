@@ -31,16 +31,23 @@ impl MovementSystem {
     ) -> Result<(), ECSError> {
         let mut movables = ecs.borrow_mut::<MovementComponent>().unwrap();
         let inputables = ecs.borrow_mut::<InputComponent>().unwrap();
+        let mut positionables = ecs.borrow_mut::<PositionComponent>().unwrap();
         let mut sprites = ecs.borrow_mut::<SpriteComponent>().unwrap();
-        for id in live_entities {
+        for *id in live_entities {
             // Process position updates caused by input
-            if ecs.entity_contains::<MovementComponent>(*id)
-                && ecs.entity_contains::<InputComponent>(*id)
+            if ecs.entity_contains::<MovementComponent>(id)
+                && ecs.entity_contains::<InputComponent>(id)
             {
-                let e_movement: &mut MovementComponent = movables.get_mut(*id).unwrap();
-                if ecs.entity_contains::<InputComponent>(*id) {
-                    let e_input: &InputComponent = inputables.get(*id).unwrap();
+                let e_movement: &mut MovementComponent = movables.get_mut(id).unwrap();
+                if ecs.entity_contains::<InputComponent>(id) {
+                    let e_input: &InputComponent = inputables.get(id).unwrap();
                     update_movement_based_on_input(e_input, e_movement);
+                }
+
+                // Process updates to entity positions
+                if ecs.entity_contains::<PositionComponent>(id) {
+                    let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
+                    update_position_based_on_movement(e_movement, e_position);
                 }
 
                 // Process scrolling the map around entities which the camera's centered on
@@ -56,10 +63,10 @@ impl MovementSystem {
                 }
 
                 // Process updating the sprite position on screen
-                if ecs.entity_contains::<SpriteComponent>(*id)
+                if ecs.entity_contains::<SpriteComponent>(id)
                     && !e_movement.keep_camera_centered_on
                 {
-                    let e_sprite: &mut SpriteComponent = sprites.get_mut(*id).unwrap();
+                    let e_sprite: &mut SpriteComponent = sprites.get_mut(id).unwrap();
                     if e_movement.pending_movement_delta_x != ZERO_VELOCITY
                         || e_movement.pending_movement_delta_y != ZERO_VELOCITY
                     {
@@ -158,5 +165,14 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
             mc.y_velocity = ZERO_VELOCITY;
         }
         mc.pending_movement_delta_y += mc.y_velocity;
+    }
+}
+
+/// This function updates the position of entities based on their pending_movement fields.
+fn update_position_based_on_movement(mc: &MovementComponent, pc: &mut PositionComponent) {
+    if mc.pending_movement_delta_x > ZERO_VELOCITY || mc.pending_movement_delta_y > ZERO_VELOCITY {
+        // Add the pending movement to entity's position
+        pc.0 += mc.pending_movement_delta_x;
+        pc.1 += mc.pending_movement_delta_y;
     }
 }
