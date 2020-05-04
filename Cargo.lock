@@ -37,6 +37,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 
 [[package]]
+name = "autocfg"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
+
+[[package]]
 name = "byte-slice-cast"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -97,7 +103,16 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e6073d0ca812575946eb5f35ff68dbe519907b25c42530389ff946dc84c6ead"
 dependencies = [
- "autocfg",
+ "autocfg 0.1.7",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96282e96bfcd3da0d3aa9938bedf1e50df3269b6db08b4876d2da0bb1a0841cf"
+dependencies = [
+ "autocfg 1.0.0",
 ]
 
 [[package]]
@@ -110,7 +125,9 @@ dependencies = [
  "fixed",
  "gba",
  "gbfs_rs",
+ "hashbrown 0.7.2",
  "tiny_ecs",
+ "twox-hash",
 ]
 
 [[package]]
@@ -160,10 +177,16 @@ version = "0.19.4"
 source = "git+https://gitlab.com/casept/tiny_ecs?branch=no_std#e186533ed1e27ef41771a994c2f6bf8275fec4d4"
 dependencies = [
  "core-error",
- "hashbrown",
+ "hashbrown 0.6.3",
  "rustc-hash",
  "vec_map",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bfd5b7557925ce778ff9b9ef90e3ade34c524b5ff10e239c69a42d546d2af56"
 
 [[package]]
 name = "typenum"

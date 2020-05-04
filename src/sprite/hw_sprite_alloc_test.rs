@@ -6,12 +6,14 @@ use gbfs_rs::Filename;
 /// Ensure initializing the object works
 #[test_case]
 fn test_init() {
+    gba::debug!("[TEST] Testing HW sprite alloc init");
     // Load palette from filesystem
     let pal = FS
         .get_file_data_by_name_as_u16_slice(Filename::try_from_str("sprite_sharedPal").unwrap())
         .unwrap();
     let mut sprite_allocator = super::HWSpriteAllocator::new(&pal);
     sprite_allocator.init();
+    gba::debug!("[TEST] Test passed");
 }
 
 /// Ensure that full OAM causes panic

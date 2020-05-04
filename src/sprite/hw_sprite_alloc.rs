@@ -12,11 +12,13 @@
 ///
 /// Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
 use core::convert::TryInto;
-
-use alloc::boxed::Box;
-use gba::{oam, palram, Color};
+use core::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 
 use super::{sprite_dma, HWSpriteSize};
+use alloc::boxed::Box;
+use gba::{oam, palram, Color};
+use hashbrown::HashMap;
+use twox_hash::XxHash64;
 
 #[derive(Debug, PartialEq)]
 enum SpriteBlockState {
@@ -27,6 +29,8 @@ enum SpriteBlockState {
 
 /// An allocator for managing hardware sprites in VRAM.
 ///
+/// Sprites which have identical tiles to a sprite already in VRAM won't be loaded in order to
+/// save VRAM, instead reference counting is used to keep the number of tiles down.
 /// # Safety
 ///
 /// This assumes that it's in complete control over the memory storing the sprite palette,
@@ -36,9 +40,16 @@ enum SpriteBlockState {
 ///
 /// Using more than one HWSpriteAllocator is also UB.
 pub(crate) struct HWSpriteAllocator {
-    allocation_map: Box<[SpriteBlockState; 1024]>, // List of 32 byte regions in object VRAM
+    /// List of 32 byte regions in object VRAM (1 tile per region),
+    /// as well as how many OAM sprites use that particular tile.
+    allocation_map: Box<[(u16, SpriteBlockState); 1024]>,
+    /// Maps the hash of a sprite's tile data to a slot, if any.
+    /// Note that we don't use the sprite data directly here, in order to avoid dealing with lifetimes.
+    allocation_hashmap: HashMap<u64, usize, BuildHasherDefault<XxHash64>>,
+    /// The hasher used for initially hashing the sprite data. This hash is what's stored in the HashMap.
+    hasher: XxHash64,
     palette: Box<[Color; 256]>,
-    oam_free_list: Box<[bool; 128]>, // List keeping track of which slots in OAM are free
+    oam_occupied_list: Box<[bool; 128]>, // List keeping track of which slots in OAM are free
 }
 
 impl HWSpriteAllocator {
@@ -51,13 +62,19 @@ impl HWSpriteAllocator {
             palette_as_gba_colors[i] = color_as_gba_color;
         }
 
-        let entries = Box::new([SpriteBlockState::Unused; 1024]);
+        let entries = Box::new([(0, SpriteBlockState::Unused); 1024]);
         let pal = Box::new(palette_as_gba_colors);
-        let oam_free_list = Box::new([false; 128]);
+        let oam_occupied_list = Box::new([false; 128]);
+
+        let hashmap: HashMap<u64, usize, BuildHasherDefault<XxHash64>> = Default::default();
+        let hasher_builder: BuildHasherDefault<XxHash64> = Default::default();
+        let hasher = hasher_builder.build_hasher();
         return HWSpriteAllocator {
             allocation_map: entries,
+            allocation_hashmap: hashmap,
+            hasher,
             palette: pal,
-            oam_free_list,
+            oam_occupied_list,
         };
     }
 
@@ -95,24 +112,50 @@ impl HWSpriteAllocator {
     ///
     /// This will panic if insufficient space is available or too many sprites are already active.
     pub fn alloc(&mut self, sprite_data: &[u32], sprite_size: HWSpriteSize) -> HWSpriteHandle {
-        // Find first spot with enough contiguous free blocks to hold the sprite
-        let num_32b_blocks = sprite_size.to_num_of_32_byte_blocks();
-        let starting_vram_tile_id = self
-            .find_contiguous_free_blocks(num_32b_blocks)
-            .expect("No contiguous free block of VRAM available to allocate hardware sprite");
-
+        // Check whether the sprite is already in VRAM by comparing it's hash
+        sprite_data.hash(&mut self.hasher);
+        let sprite_hash = self.hasher.finish();
+        let starting_vram_tile_id: usize;
         gba::info!(
-            "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
-            starting_vram_tile_id,
-            num_32b_blocks
+            "[HW_SPRITE_ALLOC] Allocating sprite with hash {:?}",
+            sprite_hash
         );
+        if self.allocation_hashmap.contains_key(&sprite_hash) {
+            gba::info!("[ALLOC] Sprite already present, not actually allocating");
+            starting_vram_tile_id = *self.allocation_hashmap.get(&sprite_hash).unwrap();
+            self.allocation_map[starting_vram_tile_id].0 += 1;
+        } else {
+            gba::info!("[HW_SPRITE_ALLOC] Sprite not present, actually allocating");
 
-        // Copy the sprite into VRAM using DMA
-        sprite_dma::dma_copy_sprite(sprite_data, starting_vram_tile_id, sprite_size);
+            // Find first spot with enough contiguous free blocks to hold the sprite
+            let num_32b_blocks = sprite_size.to_num_of_32_byte_blocks();
+            starting_vram_tile_id = self
+                .find_contiguous_free_blocks(num_32b_blocks)
+                .expect("No contiguous free block of VRAM available to allocate hardware sprite");
+
+            gba::info!(
+                "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
+                starting_vram_tile_id,
+                num_32b_blocks
+            );
+
+            // Copy the sprite into VRAM using DMA
+            sprite_dma::dma_copy_sprite(sprite_data, starting_vram_tile_id, sprite_size);
+
+            // Mark blocks as occupied, with a reference count of 1
+            self.allocation_map[starting_vram_tile_id] = (1, SpriteBlockState::Used);
+            for i in 1..num_32b_blocks {
+                self.allocation_map[starting_vram_tile_id + i] = (1, SpriteBlockState::Continue);
+            }
+
+            // Insert new sprite's hash into hashmap
+            self.allocation_hashmap
+                .insert(sprite_hash, starting_vram_tile_id);
+        }
 
         // Assign a slot in OAM
         let oam_slot = self.find_free_oam_slot();
-        self.oam_free_list[oam_slot] = true;
+        self.oam_occupied_list[oam_slot] = true;
         let (size, shape) = sprite_size.to_obj_size_and_shape();
 
         self.allocate_oam_slot(
@@ -121,16 +164,10 @@ impl HWSpriteAllocator {
             size,
             shape,
         );
-
-        // Mark blocks as occupied
-        self.allocation_map[starting_vram_tile_id] = SpriteBlockState::Used;
-        for i in 1..num_32b_blocks {
-            self.allocation_map[starting_vram_tile_id + i] = SpriteBlockState::Continue;
-        }
-
         return HWSpriteHandle {
             starting_block: starting_vram_tile_id,
             oam_slot,
+            data_hash: sprite_hash,
         };
     }
 
@@ -166,7 +203,7 @@ impl HWSpriteAllocator {
     /// Find a free slot in OAM.
     /// If none are available, panic.
     fn find_free_oam_slot(&self) -> usize {
-        match self.oam_free_list.iter().position(|&x| !x) {
+        match self.oam_occupied_list.iter().position(|&x| !x) {
             Some(pos) => pos,
             None => panic!("Attempt to create sprite when OAM is full"),
         }
@@ -175,11 +212,11 @@ impl HWSpriteAllocator {
     /// Return the index of the beginning of the first area in the allocation map
     /// with sufficient space.
     fn find_contiguous_free_blocks(&self, num_blocks: usize) -> Option<usize> {
-        for (i, block) in self.allocation_map.iter().enumerate() {
+        for (i, (_refcount, block)) in self.allocation_map.iter().enumerate() {
             if *block == SpriteBlockState::Unused {
                 let mut free_blocks: usize = 1;
                 for j in 1..num_blocks {
-                    if self.allocation_map[i + j] == SpriteBlockState::Unused {
+                    if self.allocation_map[i + j].1 == SpriteBlockState::Unused {
                         free_blocks += 1;
                     } else {
                         break;
@@ -194,18 +231,37 @@ impl HWSpriteAllocator {
     }
 
     /// Drop the allocation of the given sprite.
-    /// Note that the sprite still exists in VRAM until overwritten,
+    /// Note that the sprite still exists in VRAM until overwritten (or reused if the refcount is not 0),
     /// but is marked as inactive in OAM and therefore not displayed.
+    #[allow(dead_code)]
     pub fn free(&mut self, handle: HWSpriteHandle) {
-        // Mark the first block as unused
-        self.allocation_map[handle.starting_block] = SpriteBlockState::Unused;
-
-        // Deallocate all blocks that are marked CONTINUE after the first block
+        // Decrease refcount of first block
+        self.allocation_map[handle.starting_block].0 -= 1;
+        // Decrease refcount of  all blocks that are marked CONTINUE after the first block
         // (therefore part of this sprite)
         let mut i = 1;
         loop {
-            if self.allocation_map[handle.starting_block + i] == SpriteBlockState::Continue {
-                self.allocation_map[handle.starting_block + i] = SpriteBlockState::Unused
+            if self.allocation_map[handle.starting_block + i].1 == SpriteBlockState::Continue {
+                self.allocation_map[handle.starting_block + i].0 -= 1;
+            } else {
+                break;
+            }
+            i += 1;
+        }
+
+        // Mark starting block with refcount of 0 as free
+        if self.allocation_map[handle.starting_block].0 == 0 {
+            gba::info!("[SPRITE] Refcount reached 0, freeing sprite");
+            self.allocation_map[handle.starting_block] = (0, SpriteBlockState::Unused);
+            self.allocation_hashmap.remove(&handle.data_hash);
+        }
+        // Mark all CONTINUE blocks with refcount of 0 as free as well
+        let mut i = 1;
+        loop {
+            if self.allocation_map[handle.starting_block + i].1 == SpriteBlockState::Continue {
+                if self.allocation_map[handle.starting_block + i].0 == 0 {
+                    self.allocation_map[handle.starting_block + i] = (0, SpriteBlockState::Unused);
+                }
             } else {
                 break;
             }
@@ -218,7 +274,7 @@ impl HWSpriteAllocator {
         oam::write_obj_attributes(handle.oam_slot, attrs);
 
         // Mark slot in OAM as available
-        self.oam_free_list[handle.oam_slot] = false;
+        self.oam_occupied_list[handle.oam_slot] = false;
     }
 }
 
@@ -227,6 +283,7 @@ impl HWSpriteAllocator {
 /// for commonly used object attributes.
 pub(crate) struct HWSpriteHandle {
     starting_block: usize,
+    data_hash: u64,
     oam_slot: usize,
 }
 
