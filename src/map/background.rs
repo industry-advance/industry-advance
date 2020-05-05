@@ -5,9 +5,7 @@ use alloc::vec::Vec;
 use gba::io::{background, display, dma};
 use gba::{palram, vram, Color};
 
-/// Screen size in pixels
-const SCREEN_HEIGHT: usize = 160;
-const SCREEN_WIDTH: usize = 240;
+use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 /// Size of a screenblock expressed as number of bytes
 pub const SCREENBLOCK_SIZE_IN_U8: usize = 32 * 32 * 2;
@@ -41,8 +39,8 @@ pub(crate) struct LargeBackground<'a> {
     backing_tilemaps: Vec<Vec<&'a [u8]>>, // 2D map of
     // Absolute coordinates of the current top-left corner of the screen on the map.
     // Coordinate system starts at top-left (0,0) of the map.
-    curr_x: i32,
-    curr_y: i32,
+    curr_x: u32,
+    curr_y: u32,
     // Store which backing tilemap is currently mapped to which screenblock
     sb0_curr_backing: Option<(usize, usize)>,
     sb1_curr_backing: Option<(usize, usize)>,
@@ -147,7 +145,7 @@ impl<'a> LargeBackground<'a> {
         backing_map_y: usize,
     ) {
         // Mark the screenblock as occupied
-        let mut screenblock_index: usize;
+        let screenblock_index: usize;
         use BGScreenblockSlots::*;
         match slot {
             Zero => {
@@ -189,6 +187,16 @@ impl<'a> LargeBackground<'a> {
         }
     }
 
+    /// Returns whether the given coordinates are visible on screen right now.
+    pub fn is_coord_visible(&self, x: u32, y: u32) -> bool {
+        // For coordinates to be visible, they have to be greater than the coordinates of the top-left
+        // corner of the visible area, but no more than the X/Y size of the screen.
+        return x >= self.curr_x
+            && x < self.curr_x + (SCREEN_WIDTH as u32)
+            && y >= self.curr_y
+            && y < self.curr_y + (SCREEN_HEIGHT as u32);
+    }
+
     /// Scroll the large background by xy pixels.
     /// If the indices are positive, scrolling happens down/to the right, if negative up/to the left.
     /// Parts of the map are dynamically loaded and no longer visible parts vacated.
@@ -197,17 +205,19 @@ impl<'a> LargeBackground<'a> {
     /// If scrolling into an area that would have negative absolute coordinates visible on screen, a
     /// panic will occur.
     /// The coordinates referenced in the panics are always related to the top-left corner of the displayed area.
-    pub fn scroll(&mut self, x: i32, y: i32) {
-        gba::info!("[BACKGROUND] Scrolling by X {}, Y {}", x, y);
+    pub fn scroll(&mut self, delta_x: i32, delta_y: i32) {
+        gba::info!("[BACKGROUND] Scrolling by X {}, Y {}", delta_x, delta_y);
         // New coords of the top-left screen corner
-        self.curr_x += x;
-        self.curr_y += y;
-        gba::info!("X NOW {}", self.curr_x);
-        gba::info!("Y NOW {}", self.curr_y);
+        let new_x = self.curr_x as i32 + delta_x;
+        let new_y = self.curr_y as i32 + delta_y;
         // Ensure no negative coordinates would be visible on screen
-        if self.curr_x < 0 || self.curr_y < 0 {
+        if new_x < 0 || new_y < 0 {
             panic!("Attempt to scroll into negative coordinates");
         }
+        self.curr_x = new_x.try_into().unwrap();
+        self.curr_y = new_y.try_into().unwrap();
+        gba::info!("[BACKGROUND] X now {}", self.curr_x);
+        gba::info!("[BACKGROUND] Y now {}", self.curr_y);
         // Load new backing tilemaps if needed
         self.ensure_correct_backing_tilemaps_are_loaded();
 

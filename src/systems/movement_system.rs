@@ -1,6 +1,8 @@
-use crate::components::{InputComponent, MovementComponent, SpriteComponent};
+use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
 use crate::map::Map;
-use crate::shared_types::{Velocity, ZERO_VELOCITY};
+use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::shared_types::{Coordinate, Velocity, ZERO_VELOCITY};
+use fixed::traits::FromFixed;
 
 use core::convert::TryInto;
 
@@ -33,7 +35,8 @@ impl MovementSystem {
         let inputables = ecs.borrow_mut::<InputComponent>().unwrap();
         let mut positionables = ecs.borrow_mut::<PositionComponent>().unwrap();
         let mut sprites = ecs.borrow_mut::<SpriteComponent>().unwrap();
-        for *id in live_entities {
+        for id in live_entities {
+            let id = *id;
             // Process position updates caused by input
             if ecs.entity_contains::<MovementComponent>(id)
                 && ecs.entity_contains::<InputComponent>(id)
@@ -50,6 +53,11 @@ impl MovementSystem {
                     update_position_based_on_movement(e_movement, e_position);
                 }
 
+                // Process updates to entity sprites caused by position change
+                if ecs.entity_contains::<PositionComponent>(id)
+                    && ecs.entity_contains::<SpriteComponent>(id)
+                {}
+
                 // Process scrolling the map around entities which the camera's centered on
                 if e_movement.keep_camera_centered_on {
                     if e_movement.pending_movement_delta_x != ZERO_VELOCITY
@@ -63,34 +71,14 @@ impl MovementSystem {
                 }
 
                 // Process updating the sprite position on screen
-                if ecs.entity_contains::<SpriteComponent>(id)
-                    && !e_movement.keep_camera_centered_on
+                if ecs.entity_contains::<SpriteComponent>(id) && !e_movement.keep_camera_centered_on
                 {
                     let e_sprite: &mut SpriteComponent = sprites.get_mut(id).unwrap();
-                    if e_movement.pending_movement_delta_x != ZERO_VELOCITY
-                        || e_movement.pending_movement_delta_y != ZERO_VELOCITY
-                    {
-                        let (sprite_delta_x, sprite_delta_y) =
-                            e_movement.reset_pending_movement_delta();
-                        let mut sprite_attrs = e_sprite.get_handle().read_obj_attributes();
-
-                        // Modify sprite X position based on velocity
-                        let new_row_coord: u16 = (sprite_attrs.attr0.row_coordinate() as i32
-                            + sprite_delta_x)
-                            .try_into()
-                            .unwrap();
-                        sprite_attrs.attr0 = sprite_attrs.attr0.with_row_coordinate(new_row_coord);
-                        // Modify sprite Y position based on velocity
-                        let new_col_coord: u16 = (sprite_attrs.attr1.col_coordinate() as i32
-                            + sprite_delta_y)
-                            .try_into()
-                            .unwrap();
-                        sprite_attrs.attr1 =
-                            sprite_attrs.attr1.with_col_coordinate(new_col_coord as u16);
-
-                        e_sprite.get_handle().write_obj_attributes(sprite_attrs);
-                    }
+                    let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
+                    update_sprite_based_on_position(map, e_position, e_sprite);
                 }
+                // Get rid of any excess movement delta
+                e_movement.reset_pending_movement_delta();
             }
         }
         return Ok(());
@@ -152,7 +140,7 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
 
     if ic.down_pressed {
         gba::debug!("Should Only Move Down");
-        if mc.y_velocity < PLAYER_MAX_VELOCITY{
+        if mc.y_velocity < PLAYER_MAX_VELOCITY {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         }
         gba::debug!("Y_Velocity Now By {}", mc.y_velocity);
@@ -172,7 +160,26 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
 fn update_position_based_on_movement(mc: &MovementComponent, pc: &mut PositionComponent) {
     if mc.pending_movement_delta_x > ZERO_VELOCITY || mc.pending_movement_delta_y > ZERO_VELOCITY {
         // Add the pending movement to entity's position
-        pc.0 += mc.pending_movement_delta_x;
-        pc.1 += mc.pending_movement_delta_y;
+        (pc.0).0 += Coordinate::from_fixed(mc.pending_movement_delta_x);
+        (pc.0).1 += Coordinate::from_fixed(mc.pending_movement_delta_y);
     }
+}
+
+// Updates the sprite's relative onscreen position based on changes in it's absolute map coordinates
+fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut SpriteComponent) {
+    // Check whether sprite would be visible on screen (if not, disable drawing)
+    let (floor_x, floor_y) = pc.floor();
+    if !map.is_coord_visible(floor_x, floor_y) {
+        // TODO: Temporarily eject sprite from OAM to make room for visible ones
+        sp.get_handle().set_visibility(false);
+        return;
+    }
+
+    // Convert the map coordinates to coordinates relative to the top-left corner of the screen
+    // (which are the ones the hardware cares about)
+    let onscreen_x: u16 = (floor_x % (SCREEN_WIDTH as u32)).try_into().unwrap();
+    let onscreen_y: u16 = (floor_y % (SCREEN_HEIGHT as u32)).try_into().unwrap();
+    // Actually move the sprite
+    sp.get_handle().set_x_pos(onscreen_x);
+    sp.get_handle().set_y_pos(onscreen_y);
 }

@@ -31,6 +31,7 @@ mod entities;
 mod ewram_alloc;
 mod game;
 mod map;
+mod shared_constants;
 mod shared_types;
 mod sprite;
 mod systems;

@@ -59,12 +59,16 @@ impl<'a> Game<'a> {
         let player_id = entities::add_player(&mut e, &mut sprite_allocator)
             .expect("Failed to initialize player entity");
         live_entity_ids.push(player_id);
+
+        // Initialize a copper wall for testing
+        let copper_wall_id = entities::add_copper_wall(&mut e, &mut sprite_allocator)
+            .expect("Failed to initialize copper wall entity");
+        live_entity_ids.push(copper_wall_id);
+
         // Put the player at the center of the screen
         let mut components = e.borrow_mut::<SpriteComponent>().unwrap();
         let player_sprite_handle = components.get_mut(player_id).unwrap().get_handle();
         player_sprite_handle.set_visibility(true);
-        player_sprite_handle.set_x_pos(96);
-        player_sprite_handle.set_y_pos(64);
         drop(components);
 
         return Game {

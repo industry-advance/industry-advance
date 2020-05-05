@@ -22,7 +22,9 @@ fn test_exhaust_oam() {}
 
 /// Ensure that reclaiming OAM works
 #[test_case]
-fn test_reclaim_oam() {}
+fn test_reclaim_oam() {
+    // Alloc the maximum number of sprites
+}
 
 /// Ensure panic on VRAM exhaustion
 #[test_case]

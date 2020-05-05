@@ -19,19 +19,19 @@ impl<'a> Map<'a> {
     /// If it isn't, this function will panic.
     pub fn new_map(
         palette: &'a [u16],
-        x: usize,
-        y: usize,
+        x_size_in_tilemaps: usize,
+        y_size_in_tilemaps: usize,
         tiles: &'a [u32],
         tilemaps: Vec<&'a [u8]>,
     ) -> Map<'a> {
         for tilemap in tilemaps.clone() {
             assert_eq!(tilemap.len(), SCREENBLOCK_SIZE_IN_U8);
         }
-        let mut two_d_indexed_tilemaps: Vec<Vec<&'a [u8]>> = Vec::with_capacity(x);
-        for i in 0..x {
-            two_d_indexed_tilemaps.push(Vec::with_capacity(y));
-            for j in 0..y {
-                two_d_indexed_tilemaps[i].push(tilemaps[i * x + j]);
+        let mut two_d_indexed_tilemaps: Vec<Vec<&'a [u8]>> = Vec::with_capacity(x_size_in_tilemaps);
+        for i in 0..x_size_in_tilemaps {
+            two_d_indexed_tilemaps.push(Vec::with_capacity(y_size_in_tilemaps));
+            for j in 0..y_size_in_tilemaps {
+                two_d_indexed_tilemaps[i].push(tilemaps[i * x_size_in_tilemaps + j]);
             }
         }
         let mut bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
@@ -39,6 +39,11 @@ impl<'a> Map<'a> {
         // Ensure we don't start at the edge of the map
         bg.scroll(128, 128);
         return Map { bg };
+    }
+
+    /// Returns whether the given coordinates are visible on screen right now.
+    pub fn is_coord_visible(&self, x: u32, y: u32) -> bool {
+        return self.bg.is_coord_visible(x, y);
     }
 
     /// Loads a test map from the filesystem.
