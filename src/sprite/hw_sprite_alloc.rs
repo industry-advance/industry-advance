@@ -159,12 +159,13 @@ impl HWSpriteAllocator {
         let (size, shape) = sprite_size.to_obj_size_and_shape();
 
         self.allocate_oam_slot(
-            starting_vram_tile_id.try_into().unwrap(),
+            (starting_vram_tile_id * 2).try_into().unwrap(),
             oam_slot,
             size,
             shape,
         );
         return HWSpriteHandle {
+            sprite_size,
             starting_block: starting_vram_tile_id,
             oam_slot,
             data_hash: sprite_hash,
@@ -282,6 +283,7 @@ impl HWSpriteAllocator {
 /// Also provides some wrappers to avoid the tedium of having to get an object, modify it, and write it back
 /// for commonly used object attributes.
 pub(crate) struct HWSpriteHandle {
+    pub sprite_size: HWSpriteSize,
     starting_block: usize,
     data_hash: u64,
     oam_slot: usize,
@@ -320,6 +322,15 @@ impl HWSpriteHandle {
             attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
         }
         self.write_obj_attributes(attrs);
+    }
+
+    /// Gets the visibility of the sprite.
+    pub fn get_visibility(&self) -> bool {
+        let attrs = self.read_obj_attributes();
+        if attrs.attr0.obj_rendering() != oam::ObjectRender::Disabled {
+            return true;
+        }
+        return false;
     }
 
     /// Sets the X position of the sprite.

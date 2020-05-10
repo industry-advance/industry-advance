@@ -70,15 +70,17 @@ impl MovementSystem {
                     }
                 }
 
+                // Get rid of any excess movement delta
+                e_movement.reset_pending_movement_delta();
+            } else {
                 // Process updating the sprite position on screen
-                if ecs.entity_contains::<SpriteComponent>(id) && !e_movement.keep_camera_centered_on
+                if ecs.entity_contains::<PositionComponent>(id)
+                    && ecs.entity_contains::<SpriteComponent>(id)
                 {
                     let e_sprite: &mut SpriteComponent = sprites.get_mut(id).unwrap();
                     let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
                     update_sprite_based_on_position(map, e_position, e_sprite);
                 }
-                // Get rid of any excess movement delta
-                e_movement.reset_pending_movement_delta();
             }
         }
         return Ok(());
@@ -89,7 +91,6 @@ impl MovementSystem {
 fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponent) {
     // If the button is pressed, accelerate
     if ic.left_pressed {
-        gba::debug!("Should Only Move Left");
         if mc.x_velocity > PLAYER_MIN_VELOCITY {
             mc.x_velocity -= VELOCITY_DELTA_PER_FRAME;
         }
@@ -106,7 +107,6 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
     }
 
     if ic.right_pressed {
-        gba::debug!("Should Only Move Right");
         if mc.x_velocity < PLAYER_MAX_VELOCITY {
             mc.x_velocity += VELOCITY_DELTA_PER_FRAME;
         }
@@ -123,7 +123,6 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
     // If no buttons causing movement on the X axis are pressed, decelerate towards 0
 
     if ic.up_pressed {
-        gba::debug!("Should Only Move Up");
         if mc.y_velocity > PLAYER_MIN_VELOCITY {
             mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
         }
@@ -139,7 +138,6 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
     }
 
     if ic.down_pressed {
-        gba::debug!("Should Only Move Down");
         if mc.y_velocity < PLAYER_MAX_VELOCITY {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         }
@@ -168,18 +166,31 @@ fn update_position_based_on_movement(mc: &MovementComponent, pc: &mut PositionCo
 // Updates the sprite's relative onscreen position based on changes in it's absolute map coordinates
 fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut SpriteComponent) {
     // Check whether sprite would be visible on screen (if not, disable drawing)
-    let (floor_x, floor_y) = pc.floor();
-    if !map.is_coord_visible(floor_x, floor_y) {
+    let (top_left_x, top_left_y) = pc.floor();
+    let sh = sp.get_handle();
+    let (x_size, y_size) = sh.sprite_size.to_size_in_px();
+    let bottom_right_x = top_left_x + (x_size as u32);
+    let bottom_right_y = top_left_y + (y_size as u32);
+    if !map.is_area_visible(top_left_x, top_left_y, bottom_right_x, bottom_right_y) {
         // TODO: Temporarily eject sprite from OAM to make room for visible ones
-        sp.get_handle().set_visibility(false);
-        return;
+        gba::info!("[MOVEMENT SYSTEM] Sprite now offscreen, making invisible");
+        sh.set_visibility(false);
+    } else {
+        if !sh.get_visibility() {
+            gba::info!("[MOVEMENT SYSTEM] Sprite now onscreen, making visible again");
+            sh.set_visibility(true);
+        }
+        // Convert the map coordinates to coordinates relative to the top-left corner of the screen
+        // (which are the ones the hardware cares about)
+        let onscreen_x: u16 = (top_left_x % (SCREEN_WIDTH as u32)).try_into().unwrap();
+        let onscreen_y: u16 = (top_left_y % (SCREEN_HEIGHT as u32)).try_into().unwrap();
+        // Actually move the sprite
+        gba::info!(
+            "[MOVEMENT SYSTEM] Moving sprite to onscreen coords {} {}",
+            onscreen_x,
+            onscreen_y
+        );
+        sh.set_x_pos(onscreen_x);
+        sh.set_y_pos(onscreen_y);
     }
-
-    // Convert the map coordinates to coordinates relative to the top-left corner of the screen
-    // (which are the ones the hardware cares about)
-    let onscreen_x: u16 = (floor_x % (SCREEN_WIDTH as u32)).try_into().unwrap();
-    let onscreen_y: u16 = (floor_y % (SCREEN_HEIGHT as u32)).try_into().unwrap();
-    // Actually move the sprite
-    sp.get_handle().set_x_pos(onscreen_x);
-    sp.get_handle().set_y_pos(onscreen_y);
 }

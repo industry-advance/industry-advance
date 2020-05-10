@@ -50,7 +50,7 @@ impl HWSpriteSize {
 
     /// Calculates the amount of 32 byte blocks of VRAM required to fit the sprite.
     pub fn to_num_of_32_byte_blocks(&self) -> usize {
-        return (self.to_size_in_bytes() / 32).try_into().unwrap();
+        return (self.to_size_in_bytes() / 64).try_into().unwrap();
     }
 
     /// Calculates the sprite's size and shape in the format required by OAM.
@@ -75,6 +75,29 @@ impl HWSpriteSize {
             ThirtyTwoBySixtyFour => (Three, Vertical),
 
             SixtyFourByThirtyTwo => (Three, Horizontal),
+        }
+    }
+
+    /// Returns the size in pixels in the form (x, y).
+    pub fn to_size_in_px(&self) -> (u16, u16) {
+        use HWSpriteSize::*;
+        match self {
+            EightByEight => (8, 8),
+            SixteenBySixteen => (16, 16),
+            ThirtyTwoByThirtyTwo => (32, 32),
+            SixtyFourBySixtyFour => (64, 64),
+
+            EightBySixteen => (8, 16),
+            EightByThirtyTwo => (8, 32),
+
+            SixteenByEight => (16, 8),
+            SixteenByThirtyTwo => (16, 32),
+
+            ThirtyTwoByEight => (32, 8),
+            ThirtyTwoBySixteen => (32, 16),
+            ThirtyTwoBySixtyFour => (32, 64),
+
+            SixtyFourByThirtyTwo => (64, 32),
         }
     }
 }

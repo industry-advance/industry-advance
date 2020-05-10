@@ -41,9 +41,17 @@ impl<'a> Map<'a> {
         return Map { bg };
     }
 
-    /// Returns whether the given coordinates are visible on screen right now.
-    pub fn is_coord_visible(&self, x: u32, y: u32) -> bool {
-        return self.bg.is_coord_visible(x, y);
+    /// Returns whether the given area (in pixels) is visible on screen right now.
+    pub fn is_area_visible(
+        &self,
+        top_left_x: u32,
+        top_left_y: u32,
+        bottom_right_x: u32,
+        bottom_right_y: u32,
+    ) -> bool {
+        return self
+            .bg
+            .is_area_visible(top_left_x, top_left_y, bottom_right_x, bottom_right_y);
     }
 
     /// Loads a test map from the filesystem.

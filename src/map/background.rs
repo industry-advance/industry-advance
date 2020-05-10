@@ -187,14 +187,20 @@ impl<'a> LargeBackground<'a> {
         }
     }
 
-    /// Returns whether the given coordinates are visible on screen right now.
-    pub fn is_coord_visible(&self, x: u32, y: u32) -> bool {
-        // For coordinates to be visible, they have to be greater than the coordinates of the top-left
-        // corner of the visible area, but no more than the X/Y size of the screen.
-        return x >= self.curr_x
-            && x < self.curr_x + (SCREEN_WIDTH as u32)
-            && y >= self.curr_y
-            && y < self.curr_y + (SCREEN_HEIGHT as u32);
+    /// Returns whether the given area is visible on screen right now.
+    pub fn is_area_visible(
+        &self,
+        top_left_x: u32,
+        top_left_y: u32,
+        bottom_right_x: u32,
+        bottom_right_y: u32,
+    ) -> bool {
+        let bottom_right_screen_x = self.curr_x + (SCREEN_WIDTH as u32);
+        let bottom_right_screen_y = self.curr_y + (SCREEN_HEIGHT as u32);
+        return (bottom_right_x >= self.curr_x)
+            && (bottom_right_y >= self.curr_y)
+            && (top_left_x <= bottom_right_screen_x)
+            && (top_left_y <= bottom_right_screen_y);
     }
 
     /// Scroll the large background by xy pixels.
@@ -206,7 +212,6 @@ impl<'a> LargeBackground<'a> {
     /// panic will occur.
     /// The coordinates referenced in the panics are always related to the top-left corner of the displayed area.
     pub fn scroll(&mut self, delta_x: i32, delta_y: i32) {
-        gba::info!("[BACKGROUND] Scrolling by X {}, Y {}", delta_x, delta_y);
         // New coords of the top-left screen corner
         let new_x = self.curr_x as i32 + delta_x;
         let new_y = self.curr_y as i32 + delta_y;
@@ -216,8 +221,6 @@ impl<'a> LargeBackground<'a> {
         }
         self.curr_x = new_x.try_into().unwrap();
         self.curr_y = new_y.try_into().unwrap();
-        gba::info!("[BACKGROUND] X now {}", self.curr_x);
-        gba::info!("[BACKGROUND] Y now {}", self.curr_y);
         // Load new backing tilemaps if needed
         self.ensure_correct_backing_tilemaps_are_loaded();
 
