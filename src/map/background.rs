@@ -168,6 +168,8 @@ impl<'a> LargeBackground<'a> {
         }
 
         let tilemap_ptr = self.backing_tilemaps[backing_map_x][backing_map_y].as_ptr();
+        // Ensure that the pointer is aligned
+        assert_eq!((tilemap_ptr as usize) % 4, 0);
         // Use DMA to speed up loading
         let dest_ptr =
             (vram::VRAM_BASE_USIZE + (screenblock_index * SCREENBLOCK_SIZE_BYTES)) as *mut u32;
@@ -175,6 +177,8 @@ impl<'a> LargeBackground<'a> {
             .len()
             .try_into()
             .unwrap();
+        // We checked alignment above
+        #[allow(clippy::cast_ptr_alignment)]
         unsafe {
             dma::DMA3::set_source(tilemap_ptr as *const u32);
             dma::DMA3::set_dest(dest_ptr);
