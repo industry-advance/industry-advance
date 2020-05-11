@@ -1,4 +1,5 @@
 use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
+use crate::debug_log::*;
 use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
 
@@ -22,7 +23,7 @@ pub(crate) fn add_player(
         .with(InputComponent::new())?
         .with(PositionComponent::new())?
         .finalise()?;
-    gba::info!("[ENTITY] Created player");
+    debug_log!(Subsystems::Entity, "Created player");
 
     return Ok(entity_id);
 }

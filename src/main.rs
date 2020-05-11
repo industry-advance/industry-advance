@@ -27,6 +27,8 @@ use gbfs_rs::GBFSFilesystem;
 extern crate arrayref;
 
 mod components;
+#[macro_use]
+mod debug_log;
 mod entities;
 mod ewram_alloc;
 mod game;
@@ -36,9 +38,10 @@ mod shared_types;
 mod sprite;
 mod systems;
 
-use core::fmt::Write;
-
+use debug_log::*;
 use game::Game;
+
+use core::fmt::Write;
 
 // Filesystem containing assets
 const FS_DATA: &[u8] = include_bytes!("../assets.gbfs");
@@ -70,14 +73,12 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     unsafe {
         ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
     }
-
-    gba::info!("[MAIN] Starting game!");
-
+    debug_log!(Subsystems::Main, "Starting game!");
     let mut game = Game::init();
     // Start game loop
     game.run();
     // Don't return
-    gba::debug!("[MAIN] Done running game loop, looping forever");
+    debug_log!(Subsystems::Main, "Done running game loop, looping forever");
     loop {}
 }
 

@@ -1,4 +1,5 @@
 use crate::components::InputComponent;
+use crate::debug_log::*;
 
 use gba::io::keypad;
 use tiny_ecs::{ECSError, Entities};
@@ -28,32 +29,32 @@ impl InputSystem {
                     let mut e_input_component: &mut InputComponent = movables.get_mut(*id).unwrap();
                     // Pass D-Pad movement onto entity movement components
                     if keys.left() {
-                        gba::info!("[INPUT] D-Pad left pressed");
+                        debug_log!(Subsystems::InputSystem, "[INPUT] D-Pad left pressed");
                         e_input_component.left_pressed = true;
                     } else if e_input_component.left_pressed {
                         e_input_component.left_pressed = false;
-                        gba::info!("[INPUT] D-Pad left released");
+                        debug_log!(Subsystems::InputSystem, "D-Pad left released");
                     }
                     if keys.right() {
-                        gba::info!("[INPUT] D-Pad right pressed");
+                        debug_log!(Subsystems::InputSystem, "D-Pad right pressed");
                         e_input_component.right_pressed = true;
                     } else if e_input_component.right_pressed {
                         e_input_component.right_pressed = false;
-                        gba::info!("[INPUT] D-Pad right released");
+                        debug_log!(Subsystems::InputSystem, "D-Pad right released");
                     }
                     if keys.up() {
-                        gba::info!("[INPUT] D-Pad up pressed");
+                        debug_log!(Subsystems::InputSystem, "D-Pad up pressed");
                         e_input_component.up_pressed = true;
                     } else if e_input_component.up_pressed {
                         e_input_component.up_pressed = false;
-                        gba::info!("[INPUT] D-Pad up released");
+                        debug_log!(Subsystems::InputSystem, "D-Pad up released");
                     }
                     if keys.down() {
-                        gba::info!("[INPUT] D-Pad down pressed");
+                        debug_log!(Subsystems::InputSystem, "D-Pad down pressed");
                         e_input_component.down_pressed = true;
                     } else if e_input_component.down_pressed {
                         e_input_component.down_pressed = false;
-                        gba::info!("[INPUT] D-Pad down released");
+                        debug_log!(Subsystems::InputSystem, "D-Pad down released");
                     }
                 }
             }

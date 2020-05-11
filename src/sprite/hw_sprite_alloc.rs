@@ -1,16 +1,19 @@
-/// This module provides the ability to manage objects (hardware sprites) in video memory.
-/// The interface is allocator-like, with the ability to allocate and free sprites.
-///
-/// Note that all sprites must share a palette.
-///
-/// DISPCNT also has to be set for 1D mapping.
-///
-/// Heavily inspired by this article: https://www.gamasutra.com/view/feature/131491/gameboy_advance_resource_management.php?print=1
-///
-/// # TODO:
-/// Consider upstreaming to GBA crate.
-///
-/// Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
+//! This module provides the ability to manage objects (hardware sprites) in video memory.
+//! The interface is allocator-like, with the ability to allocate and free sprites.
+//!
+//! Note that all sprites must share a palette.
+//!
+//! DISPCNT also has to be set for 1D mapping.
+//!
+//! Heavily inspired by this article: https://www.gamasutra.com/view/feature/131491/gameboy_advance_resource_management.php?print=1
+//!
+//! # TODO:
+//! Consider upstreaming to GBA crate.
+//!
+//! Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
+
+use crate::debug_log::*;
+
 use core::convert::TryInto;
 use core::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 
@@ -116,16 +119,23 @@ impl HWSpriteAllocator {
         sprite_data.hash(&mut self.hasher);
         let sprite_hash = self.hasher.finish();
         let starting_vram_tile_id: usize;
-        gba::info!(
-            "[HW_SPRITE_ALLOC] Allocating sprite with hash {:?}",
+        debug_log!(
+            Subsystems::HWSprite,
+            "Allocating sprite with hash {:?}",
             sprite_hash
         );
         if self.allocation_hashmap.contains_key(&sprite_hash) {
-            gba::info!("[ALLOC] Sprite already present, not actually allocating");
+            debug_log!(
+                Subsystems::HWSprite,
+                "Sprite already present, not actually allocating"
+            );
             starting_vram_tile_id = *self.allocation_hashmap.get(&sprite_hash).unwrap();
             self.allocation_map[starting_vram_tile_id].0 += 1;
         } else {
-            gba::info!("[HW_SPRITE_ALLOC] Sprite not present, actually allocating");
+            debug_log!(
+                Subsystems::HWSprite,
+                "Sprite not present, actually allocating"
+            );
 
             // Find first spot with enough contiguous free blocks to hold the sprite
             let num_32b_blocks = sprite_size.to_num_of_32_byte_blocks();
@@ -133,8 +143,9 @@ impl HWSpriteAllocator {
                 .find_contiguous_free_blocks(num_32b_blocks)
                 .expect("No contiguous free block of VRAM available to allocate hardware sprite");
 
-            gba::info!(
-                "[HW_SPRITE_ALLOC] Beginning allocation at block #{} for {} block sprite",
+            debug_log!(
+                Subsystems::HWSprite,
+                "Beginning allocation at block #{} for {} block sprite",
                 starting_vram_tile_id,
                 num_32b_blocks
             );
@@ -252,7 +263,7 @@ impl HWSpriteAllocator {
 
         // Mark starting block with refcount of 0 as free
         if self.allocation_map[handle.starting_block].0 == 0 {
-            gba::info!("[SPRITE] Refcount reached 0, freeing sprite");
+            debug_log!(Subsystems::HWSprite, "Refcount reached 0, freeing sprite");
             self.allocation_map[handle.starting_block] = (0, SpriteBlockState::Unused);
             self.allocation_hashmap.remove(&handle.data_hash);
         }

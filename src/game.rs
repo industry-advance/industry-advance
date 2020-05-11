@@ -1,4 +1,5 @@
 use crate::components::SpriteComponent;
+use crate::debug_log::*;
 use crate::entities;
 use crate::map::Map;
 use crate::sprite::HWSpriteAllocator;
@@ -33,10 +34,10 @@ impl<'a> Game<'a> {
 
     /// Creates and initializes a new game.
     pub fn init() -> Game<'a> {
-        gba::debug!("[GAME] Loading game data from FS");
+        debug_log!(Subsystems::Game, "Loading game data from FS");
 
         // Initialize hardware sprite management
-        gba::debug!("Initializing sprite allocator");
+        debug_log!(Subsystems::Game, "Initializing sprite allocator");
         let mut sprite_allocator = HWSpriteAllocator::new(
             &FS.get_file_data_by_name_as_u16_slice(
                 Filename::try_from_str("sprite_sharedPal").unwrap(),

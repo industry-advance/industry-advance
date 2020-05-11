@@ -1,4 +1,5 @@
 use crate::components::{PositionComponent, SpriteComponent};
+use crate::debug_log::*;
 use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
 
@@ -16,7 +17,7 @@ pub(crate) fn add_copper_wall(
         ))?
         .with(PositionComponent::new())?
         .finalise()?;
-    gba::info!("[ENTITY] Created copper wall");
+    debug_log!(Subsystems::Entity, "Created copper wall");
 
     return Ok(entity_id);
 }

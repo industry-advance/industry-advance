@@ -8,6 +8,7 @@ pub const EWRAM_END: usize = 0x203_3FF0;
 // Something seems to be in 0x203FFF
 // pub const EWRAM_END: usize = 0x203_FFF0;
 pub const EWRAM_SIZE: usize = EWRAM_END - EWRAM_BASE;
+// WARNING: DO NOT TOUCH THIS LOGGING! See debug_log.rs for details
 /// Whether to emit additional debug info (slow and quite spamy)
 const ALLOCATOR_DEBUG_PRINT: bool = false;
 

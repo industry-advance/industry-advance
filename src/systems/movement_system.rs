@@ -1,7 +1,9 @@
 use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
+use crate::debug_log::*;
 use crate::map::Map;
 use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::shared_types::{Coordinate, Velocity, ZERO_VELOCITY};
+
 use fixed::traits::FromFixed;
 
 use core::convert::TryInto;
@@ -128,7 +130,6 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         }
         mc.pending_movement_delta_y += mc.y_velocity;
     } else if !ic.up_pressed && !ic.down_pressed && mc.y_velocity < ZERO_VELOCITY {
-        gba::debug!("Seems i have veloc up left");
         if mc.y_velocity < -VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         } else {
@@ -141,10 +142,8 @@ fn update_movement_based_on_input(ic: &InputComponent, mc: &mut MovementComponen
         if mc.y_velocity < PLAYER_MAX_VELOCITY {
             mc.y_velocity += VELOCITY_DELTA_PER_FRAME;
         }
-        gba::debug!("Y_Velocity Now By {}", mc.y_velocity);
         mc.pending_movement_delta_y += mc.y_velocity;
     } else if !ic.down_pressed && !ic.up_pressed && mc.y_velocity > ZERO_VELOCITY {
-        gba::debug!("Seems i have veloc down left");
         if mc.y_velocity > VELOCITY_DELTA_PER_FRAME {
             mc.y_velocity -= VELOCITY_DELTA_PER_FRAME;
         } else {
@@ -173,11 +172,17 @@ fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut S
     let bottom_right_y = top_left_y + (y_size as u32);
     if !map.is_area_visible(top_left_x, top_left_y, bottom_right_x, bottom_right_y) {
         // TODO: Temporarily eject sprite from OAM to make room for visible ones
-        gba::info!("[MOVEMENT SYSTEM] Sprite now offscreen, making invisible");
+        debug_log!(
+            Subsystems::MovementSystem,
+            "Sprite now offscreen, making invisible"
+        );
         sh.set_visibility(false);
     } else {
         if !sh.get_visibility() {
-            gba::info!("[MOVEMENT SYSTEM] Sprite now onscreen, making visible again");
+            debug_log!(
+                Subsystems::MovementSystem,
+                "Sprite now onscreen, making visible again"
+            );
             sh.set_visibility(true);
         }
         // Convert the map coordinates to coordinates relative to the top-left corner of the screen
@@ -185,8 +190,9 @@ fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut S
         let onscreen_x: u16 = (top_left_x % (SCREEN_WIDTH as u32)).try_into().unwrap();
         let onscreen_y: u16 = (top_left_y % (SCREEN_HEIGHT as u32)).try_into().unwrap();
         // Actually move the sprite
-        gba::info!(
-            "[MOVEMENT SYSTEM] Moving sprite to onscreen coords {} {}",
+        debug_log!(
+            Subsystems::MovementSystem,
+            "Moving sprite to onscreen coords {} {}",
             onscreen_x,
             onscreen_y
         );
