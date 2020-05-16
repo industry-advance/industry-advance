@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
+"""
+Script for converting assets to GBA-friendly formats
+"""
+
 # This module provides functionality for modifying (padding, resizing) sprites.
 import modifysprite
 
 # This module provides functionality for splitting maps.
 import splitmap
+
+# This module provides conversion of TTF fonts to PNG
+import preparefont
 
 import os
 import pathlib
@@ -14,7 +21,7 @@ from typing import List
 
 # Directory containing sprites to be processed
 SPRITES_IN_DIR = "Mindustry/core/assets-raw/sprites/"
-# Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need)
+# Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need
 SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
@@ -22,6 +29,9 @@ SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
 MAPS_IN_DIR = "testmaps"
+
+# Path to font which should be included
+TTF_FONT_PATH = "Px437_IBM_BIOS.ttf"
 
 
 def get_sprite_paths() -> List[str]:
@@ -139,7 +149,29 @@ def convert_maps(map_paths: List[str]):
     )
 
 
+def convert_fonts():
+    temp_dir: str = tempfile.TemporaryDirectory().name
+    pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
+    char_file = pathlib.Path(temp_dir).joinpath("font_chars.txt")
+    img_file = pathlib.Path(temp_dir).joinpath("font.png")
+    preparefont.convert_ttf_font(TTF_FONT_PATH, char_file, img_file)
+    # Insert character list into FS (they're ordered in the same order as in the img)
+    # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
+    subprocess.run(check=True, args=["gbfs", "assets.gbfs", char_file])
+    # Run grit to actually convert glyphs
+    subprocess.run(
+        "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+            img_file
+        ),
+        shell=True,
+        check=True,
+    )
+
+
 def main():
+    print("----Converting font...----")
+    convert_fonts()
+
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)

@@ -5,22 +5,7 @@ use alloc::vec::Vec;
 use gba::io::{background, display, dma};
 use gba::{palram, vram, Color};
 
-use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
-
-/// Size of a screenblock expressed as number of bytes
-pub const SCREENBLOCK_SIZE_IN_U8: usize = 32 * 32 * 2;
-const TILE_SIZE_IN_PX: usize = 8;
-/// Length of the edge of a single backing tilemap part
-const BACKING_MAP_LENGTH_IN_TILES: usize = 32;
-
-/// Charblock to use for tiles
-const CHARBLOCK: usize = 0;
-/// Screenblock to start at for loading backing tilemaps
-const SCREEN_BASE_BLOCK: usize = 16;
-
-/// Used for DMA
-const SCREENBLOCK_SIZE_BYTES: usize = 2 * 1024;
-const CHARBLOCK_SIZE_BYTES: usize = 16 * 1024;
+use crate::shared_constants::*;
 
 /// By default, the GBA only allows up to 32x32 tiles per screenblock.
 /// However, the hardware supports using adjacent screenblocks to produce up to 64x64 tile maps.
@@ -96,12 +81,16 @@ impl<'a> LargeBackground<'a> {
         // Use DMA to load tiles into VRAM
         // We only use charblock 0 for now.
         if tiles.len() > (CHARBLOCK_SIZE_BYTES / 4) {
-            panic!("Too many tiles in charblock!");
+            panic!(
+                "Too many tiles in charblock! Expected up to {}, got {}",
+                (CHARBLOCK_SIZE_BYTES / 4),
+                tiles.len()
+            );
         }
         unsafe {
             dma::DMA3::set_source(tiles.as_ptr());
             dma::DMA3::set_dest(
-                (vram::VRAM_BASE_USIZE + (CHARBLOCK * CHARBLOCK_SIZE_BYTES)) as *mut u32,
+                (vram::VRAM_BASE_USIZE + (BACKGROUND_CHARBLOCK * CHARBLOCK_SIZE_BYTES)) as *mut u32,
             );
             dma::DMA3::set_count(tiles.len().try_into().unwrap());
             dma::DMA3::set_control(
@@ -125,8 +114,8 @@ impl<'a> LargeBackground<'a> {
 
         // Enable BG0 (which we use)
         let bg_settings = background::BackgroundControlSetting::new()
-            .with_char_base_block(CHARBLOCK.try_into().unwrap())
-            .with_screen_base_block(SCREEN_BASE_BLOCK.try_into().unwrap())
+            .with_char_base_block(BACKGROUND_CHARBLOCK.try_into().unwrap())
+            .with_screen_base_block(BACKGROUND_SCREEN_BASE_BLOCK.try_into().unwrap())
             .with_is_8bpp(false)
             .with_size(background::BGSize::Three)
             .with_bg_priority(3);
@@ -150,20 +139,20 @@ impl<'a> LargeBackground<'a> {
         match slot {
             Zero => {
                 self.sb0_curr_backing = Some((backing_map_x, backing_map_y));
-                screenblock_index = SCREEN_BASE_BLOCK;
+                screenblock_index = BACKGROUND_SCREEN_BASE_BLOCK;
             }
 
             One => {
                 self.sb1_curr_backing = Some((backing_map_x, backing_map_y));
-                screenblock_index = SCREEN_BASE_BLOCK + 1;
+                screenblock_index = BACKGROUND_SCREEN_BASE_BLOCK + 1;
             }
             Two => {
                 self.sb2_curr_backing = Some((backing_map_x, backing_map_y));
-                screenblock_index = SCREEN_BASE_BLOCK + 2;
+                screenblock_index = BACKGROUND_SCREEN_BASE_BLOCK + 2;
             }
             Three => {
                 self.sb3_curr_backing = Some((backing_map_x, backing_map_y));
-                screenblock_index = SCREEN_BASE_BLOCK + 3;
+                screenblock_index = BACKGROUND_SCREEN_BASE_BLOCK + 3;
             }
         }
 

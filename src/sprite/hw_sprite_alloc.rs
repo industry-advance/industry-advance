@@ -208,7 +208,9 @@ impl HWSpriteAllocator {
                     .with_obj_shape(obj_shape)
                     .with_is_8bpp(true),
                 attr1: oam::OBJAttr1::new().with_obj_size(obj_size),
-                attr2: oam::OBJAttr2::new().with_tile_id(starting_vram_tile_id),
+                attr2: oam::OBJAttr2::new()
+                    .with_tile_id(starting_vram_tile_id)
+                    .with_priority(1),
             },
         );
     }

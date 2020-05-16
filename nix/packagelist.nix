@@ -30,5 +30,6 @@ in {
     # Execution of python glue
     nixpkgs.python37
     nixpkgs.python37Packages.pillow
+    nixpkgs.python37Packages.fonttools
   ];
 }

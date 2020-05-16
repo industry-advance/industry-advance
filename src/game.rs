@@ -4,6 +4,7 @@ use crate::entities;
 use crate::map::Map;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{InputSystem, MovementSystem};
+use crate::text::TextEngine;
 
 use crate::FS;
 
@@ -20,6 +21,7 @@ pub(crate) struct Game<'a> {
     entities: Entities,
     live_entity_ids: Vec<usize>,
     input_system: InputSystem,
+    text_engine: TextEngine,
 }
 
 impl<'a> Game<'a> {
@@ -72,12 +74,15 @@ impl<'a> Game<'a> {
         player_sprite_handle.set_visibility(true);
         drop(components);
 
+        // Initialize the text engine
+        let text_engine = TextEngine::with_default_font();
         return Game {
             sprite_alloc: sprite_allocator,
             map,
             entities: e,
             live_entity_ids,
             input_system: InputSystem::init(),
+            text_engine,
         };
     }
 

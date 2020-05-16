@@ -1,5 +1,6 @@
-use super::background::{LargeBackground, SCREENBLOCK_SIZE_IN_U8};
+use super::background::LargeBackground;
 
+use crate::shared_constants::SCREENBLOCK_SIZE_BYTES;
 use crate::FS;
 
 use gbfs_rs::Filename;
@@ -25,7 +26,7 @@ impl<'a> Map<'a> {
         tilemaps: Vec<&'a [u8]>,
     ) -> Map<'a> {
         for tilemap in tilemaps.clone() {
-            assert_eq!(tilemap.len(), SCREENBLOCK_SIZE_IN_U8);
+            assert_eq!(tilemap.len(), SCREENBLOCK_SIZE_BYTES);
         }
         let mut two_d_indexed_tilemaps: Vec<Vec<&'a [u8]>> = Vec::with_capacity(x_size_in_tilemaps);
         for i in 0..x_size_in_tilemaps {

@@ -37,6 +37,7 @@ mod shared_constants;
 mod shared_types;
 mod sprite;
 mod systems;
+mod text;
 
 use debug_log::*;
 use game::Game;

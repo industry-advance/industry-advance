@@ -18,6 +18,7 @@ pub enum Subsystems {
     HWSprite,
     InputSystem,
     MovementSystem,
+    Text,
 }
 
 impl Subsystems {
@@ -30,6 +31,7 @@ impl Subsystems {
             HWSprite => "HW SPRITE",
             InputSystem => "INPUT SYSTEM",
             MovementSystem => "MOVEMENT SYSTEM",
+            Text => "TEXT",
         }
     }
 }
@@ -39,7 +41,6 @@ pub const ENABLED_SUBSYSTEMS: [Subsystems; 2] = [Subsystems::Main, Subsystems::G
 #[macro_export]
 macro_rules! debug_log {
   ($subsystem:expr ,$($arg:tt)*) => {{
-    // TODO: Capture enum as first arg
     if $crate::debug_log::ENABLED_SUBSYSTEMS.contains(&$subsystem) {
         use gba::mgba::{MGBADebug, MGBADebugLevel};
         use core::fmt::Write;
