@@ -243,8 +243,9 @@ impl<'a> LargeBackground<'a> {
 
         // For each corner, check whether the backing tilemaps are already present in VRAM
         // TODO: Ensure they're in the correct one of the four screenblocks
-        if let None =
-            self.get_backing_tilemap_loaded_slot(new_top_left_backing_x, new_top_left_backing_y)
+        if self
+            .get_backing_tilemap_loaded_slot(new_top_left_backing_x, new_top_left_backing_y)
+            .is_none()
         {
             self.load_backing_tilemap(
                 BGScreenblockSlots::Zero,
@@ -252,8 +253,9 @@ impl<'a> LargeBackground<'a> {
                 new_top_left_backing_y,
             );
         }
-        if let None =
-            self.get_backing_tilemap_loaded_slot(new_top_right_backing_x, new_top_right_backing_y)
+        if self
+            .get_backing_tilemap_loaded_slot(new_top_right_backing_x, new_top_right_backing_y)
+            .is_none()
         {
             self.load_backing_tilemap(
                 BGScreenblockSlots::One,
@@ -261,8 +263,9 @@ impl<'a> LargeBackground<'a> {
                 new_top_right_backing_y,
             );
         }
-        if let None = self
+        if self
             .get_backing_tilemap_loaded_slot(new_bottom_right_backing_x, new_bottom_right_backing_y)
+            .is_none()
         {
             self.load_backing_tilemap(
                 BGScreenblockSlots::Three,
@@ -270,8 +273,9 @@ impl<'a> LargeBackground<'a> {
                 new_bottom_right_backing_y,
             );
         }
-        if let None = self
+        if self
             .get_backing_tilemap_loaded_slot(new_bottom_left_backing_x, new_bottom_left_backing_y)
+            .is_none()
         {
             self.load_backing_tilemap(
                 BGScreenblockSlots::Two,

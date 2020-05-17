@@ -9,6 +9,4 @@ pub type Velocity = FixedI32<U8>;
 pub const ZERO_VELOCITY: Velocity = Velocity::from_bits(0b0);
 
 pub type Coordinate = FixedU32<U8>;
-pub const ZERO_COORDINATE: Coordinate = Coordinate::from_bits(0b0);
 pub type Position = (Coordinate, Coordinate);
-pub const ZERO_POSITION: Position = (ZERO_COORDINATE, ZERO_COORDINATE);

@@ -5,8 +5,6 @@ use crate::shared_types::Coordinate;
 use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
 
-use core::convert::TryInto;
-
 /// Middle of the screen should be middle of sprite as well
 const INITIAL_PLAYER_ONSCREEN_POS_X: u16 = (SCREEN_WIDTH / 2 - 32 / 2) as u16;
 const INITIAL_PLAYER_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2 - 32 / 2) as u16;

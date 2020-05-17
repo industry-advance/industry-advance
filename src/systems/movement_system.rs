@@ -1,7 +1,6 @@
 use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
 use crate::debug_log::*;
 use crate::map::Map;
-use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::shared_types::{Coordinate, Velocity, ZERO_VELOCITY};
 
 use fixed::traits::FromFixed;
@@ -17,7 +16,7 @@ const PLAYER_MIN_VELOCITY: Velocity =
 
 /// How much the player's speed changes for each frame the button is held down, in pixels per second.
 const VELOCITY_DELTA_PER_FRAME: Velocity =
-    Velocity::from_bits(0b0000_0000_0000_0000_0000_0000_01101); // 0.1
+    Velocity::from_bits(0b0_0000_0000_0000_0000_0000_0000_1101); // 0.1
 
 use tiny_ecs::{ECSError, Entities};
 /// An ECS system which moves entity sprites based on their velocity
@@ -61,16 +60,15 @@ impl MovementSystem {
                 {}
 
                 // Process scrolling the map around entities which the camera's centered on
-                if e_movement.keep_camera_centered_on {
-                    if e_movement.pending_movement_delta_x != ZERO_VELOCITY
-                        || e_movement.pending_movement_delta_y != ZERO_VELOCITY
-                    {
-                        // Subtract the number of whole pixels we can scroll from the accumulated movement
-                        let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
-                        // Map scrolling happens in the opposite direction to where the player's moving
-                        map.scroll(map_delta_x, map_delta_y);
-                        // We also have to scroll all other sprites along with the map
-                    }
+                if e_movement.keep_camera_centered_on
+                    && e_movement.pending_movement_delta_x != ZERO_VELOCITY
+                    || e_movement.pending_movement_delta_y != ZERO_VELOCITY
+                {
+                    // Subtract the number of whole pixels we can scroll from the accumulated movement
+                    let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
+                    // Map scrolling happens in the opposite direction to where the player's moving
+                    map.scroll(map_delta_x, map_delta_y);
+                    // We also have to scroll all other sprites along with the map
                 }
 
                 // Get rid of any excess movement delta
