@@ -69,6 +69,7 @@ impl MovementSystem {
                         let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
                         // Map scrolling happens in the opposite direction to where the player's moving
                         map.scroll(map_delta_x, map_delta_y);
+                        // We also have to scroll all other sprites along with the map
                     }
                 }
 
@@ -165,12 +166,17 @@ fn update_position_based_on_movement(mc: &MovementComponent, pc: &mut PositionCo
 // Updates the sprite's relative onscreen position based on changes in it's absolute map coordinates
 fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut SpriteComponent) {
     // Check whether sprite would be visible on screen (if not, disable drawing)
-    let (top_left_x, top_left_y) = pc.floor();
+    let (sprite_top_left_x, sprite_top_left_y) = pc.floor();
     let sh = sp.get_handle();
     let (x_size, y_size) = sh.sprite_size.to_size_in_px();
-    let bottom_right_x = top_left_x + (x_size as u32);
-    let bottom_right_y = top_left_y + (y_size as u32);
-    if !map.is_area_visible(top_left_x, top_left_y, bottom_right_x, bottom_right_y) {
+    let sprite_bottom_right_x = sprite_top_left_x + (x_size as u32);
+    let sprite_bottom_right_y = sprite_top_left_y + (y_size as u32);
+    if !map.is_area_visible(
+        sprite_top_left_x,
+        sprite_top_left_y,
+        sprite_bottom_right_x,
+        sprite_bottom_right_y,
+    ) {
         // TODO: Temporarily eject sprite from OAM to make room for visible ones
         debug_log!(
             Subsystems::MovementSystem,
@@ -185,10 +191,26 @@ fn update_sprite_based_on_position(map: &Map, pc: &PositionComponent, sp: &mut S
             );
             sh.set_visibility(true);
         }
+        let (map_top_left_x, map_top_left_y) = map.get_top_left_corner_coords();
         // Convert the map coordinates to coordinates relative to the top-left corner of the screen
         // (which are the ones the hardware cares about)
-        let onscreen_x: u16 = (top_left_x % (SCREEN_WIDTH as u32)).try_into().unwrap();
-        let onscreen_y: u16 = (top_left_y % (SCREEN_HEIGHT as u32)).try_into().unwrap();
+        let onscreen_x: i16 = ((sprite_top_left_x as i32) - (map_top_left_x as i32))
+            .try_into()
+            .unwrap();
+        let onscreen_y: i16 = ((sprite_top_left_y as i32) - (map_top_left_y as i32))
+            .try_into()
+            .unwrap();
+        // Because of the way the GBA stores sprite coordinates, we have to do some funkiness for negative values to work.
+        let onscreen_x: u16 = if onscreen_x > 0 {
+            onscreen_x.try_into().unwrap()
+        } else {
+            (onscreen_x & 0x01FF).try_into().unwrap()
+        };
+        let onscreen_y: u16 = if onscreen_y > 0 {
+            onscreen_y.try_into().unwrap()
+        } else {
+            (onscreen_y & 0x00FF).try_into().unwrap()
+        };
         // Actually move the sprite
         debug_log!(
             Subsystems::MovementSystem,

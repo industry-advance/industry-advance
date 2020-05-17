@@ -35,10 +35,7 @@ impl<'a> Map<'a> {
                 two_d_indexed_tilemaps[i].push(tilemaps[i * x_size_in_tilemaps + j]);
             }
         }
-        let mut bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
-
-        // Ensure we don't start at the edge of the map
-        bg.scroll(128, 128);
+        let bg = LargeBackground::init(tiles, two_d_indexed_tilemaps, palette);
         return Map { bg };
     }
 
@@ -55,6 +52,10 @@ impl<'a> Map<'a> {
             .is_area_visible(top_left_x, top_left_y, bottom_right_x, bottom_right_y);
     }
 
+    // Returns the top-left corner (x, y) coordinates of the currently visible map area.
+    pub fn get_top_left_corner_coords(&self) -> (u32, u32) {
+        return self.bg.get_top_left_corner_coords();
+    }
     /// Loads a test map from the filesystem.
     pub fn load_test_map_from_fs() -> Map<'a> {
         let map_0: &'static [u8] = FS

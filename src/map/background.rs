@@ -300,6 +300,12 @@ impl<'a> LargeBackground<'a> {
             },
         }
     }
+
+    /// Returns the (x,y) coordinates of the top-left corner of the currently visible
+    /// background area.
+    pub fn get_top_left_corner_coords(&self) -> (u32, u32) {
+        return (self.curr_x, self.curr_y);
+    }
 }
 
 /// Looks up the indices of backing tilemap the coordinates belong to.
