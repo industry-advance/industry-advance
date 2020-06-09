@@ -1,5 +1,4 @@
 {
-    "python.pythonPath": "/nix/store/xb1mp0f16lv23rwhfdc1665v5r20jfmm-python3-3.7.6/bin/python3.7",
     "nixEnvSelector.nixShellConfig": "${workspaceRoot}/shell.nix",
     "rust.sysroot": "target/sysroot",
     "rust.target": "thumbv4-none-agb"

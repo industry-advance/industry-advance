@@ -4,14 +4,17 @@
 Script for converting assets to GBA-friendly formats
 """
 
-# This module provides functionality for modifying (padding, resizing) sprites.
-import modifysprite
+# This module provides functionality for padding the size of graphical assets.
+import pad
 
 # This module provides functionality for splitting maps.
 import splitmap
 
 # This module provides conversion of TTF fonts to PNG
 import preparefont
+
+# This module converts Mindustry's maps to a more suitable format
+import parse_save
 
 import os
 import pathlib
@@ -28,7 +31,7 @@ SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
-MAPS_IN_DIR = "testmaps"
+MAPS_IN_DIR = "Mindustry/core/assets/maps/"
 
 # Path to font which should be included
 TTF_FONT_PATH = "Px437_IBM_BIOS.ttf"
@@ -61,7 +64,7 @@ def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
                     parents=True, exist_ok=True
                 )
                 print("Resizing sprite {}".format(path))
-                modifysprite.halve_resolution(path, out_path)
+                pad.halve_resolution(path, out_path)
                 out_paths.append(out_path)
                 was_resized = True
                 break
@@ -74,14 +77,14 @@ def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     padded_sprite_dir: str = tempfile.TemporaryDirectory().name
     for path in in_paths:
-        if modifysprite.image_is_too_large(path):
+        if pad.sprite_is_too_large(path):
             print("WARNING: Sprite {} too large, skipping".format(path))
             continue
-        if modifysprite.needs_padding(path):
+        if pad.sprite_needs_padding(path):
             print("Padding sprite {}".format(path))
             out_path: str = os.path.join(padded_sprite_dir, path)
             pathlib.Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
-            modifysprite.pad_sprite(path, out_path)
+            pad.pad_sprite(path, out_path)
             out_paths.append(out_path)
         else:
             out_paths.append(path)
@@ -107,12 +110,11 @@ def convert_sprites(sprite_paths: List[str]):
 
 
 def get_map_paths() -> List[str]:
-    # Paths to sprites
     map_paths: List[str] = list()
 
     for root, dirs, files in os.walk(MAPS_IN_DIR, topdown=True):
         for name in files:
-            if name.endswith(".png"):
+            if name.endswith(".msav"):
                 map_paths.append(os.path.join(root, name))
     return map_paths
 
@@ -134,7 +136,14 @@ def split_maps_into_chunks(in_paths: List[str]) -> List[str]:
     return out_paths
 
 
-def convert_maps(map_paths: List[str]):
+def pad_maps(map_paths: List[str]) -> List[str]:
+    new_paths = list()
+    for m in map_paths:
+        new_paths.append(pad.pad_map(m))
+    return new_paths
+
+
+def convert_maps_via_grit(map_paths: List[str]):
     all_map_paths: str = ""
     for map_path in map_paths:
         all_map_paths = all_map_paths + " " + map_path
@@ -147,6 +156,20 @@ def convert_maps(map_paths: List[str]):
         shell=True,
         check=True,
     )
+
+
+def convert_mindustry_maps_to_png(map_paths: List[str]) -> List[str]:
+    # Maps that we can't parse (yet)
+    map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav"]
+    png_paths = list()
+    for m in map_paths:
+        if m in map_blacklist:
+            print("Blacklisted map, returning nothing for map")
+            continue
+        print("Converting map: {}".format(m))
+        png_path = parse_save.map_file_to_map(m)
+        png_paths.append(png_path)
+    return png_paths
 
 
 def convert_fonts():
@@ -180,8 +203,14 @@ def main():
 
     print("----Converting maps...----")
     map_paths = get_map_paths()
-    split_map_paths = split_maps_into_chunks(map_paths)
-    convert_maps(split_map_paths)
+    print("Map paths: {}".format(map_paths))
+    map_png_paths = convert_mindustry_maps_to_png(map_paths)
+    print(f"map_png_paths: {map_png_paths}")
+    padded_map_png_paths = pad_maps(map_png_paths)
+    print(padded_map_png_paths)
+    print(f"padded_map_png_paths: {padded_map_png_paths}")
+    split_map_paths = split_maps_into_chunks(padded_map_png_paths)
+    convert_maps_via_grit(split_map_paths)
 
 
 if __name__ == "__main__":

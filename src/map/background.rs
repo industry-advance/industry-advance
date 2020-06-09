@@ -19,9 +19,9 @@ use crate::shared_constants::*;
 ///
 /// This code assumes that it's in sole control of the display control register's background and size settings,
 /// as well as all charblocks and screenblocks in VRAM and background PALRAM.
-#[derive(Debug)]
-pub(crate) struct LargeBackground<'a> {
-    backing_tilemaps: Vec<Vec<&'a [u8]>>, // 2D map of
+#[derive(Debug, Clone)]
+pub(crate) struct LargeBackground {
+    backing_tilemaps: Vec<Vec<&'static [u8]>>, // 2D map of
     // Absolute coordinates of the current top-left corner of the screen on the map.
     // Coordinate system starts at top-left (0,0) of the map.
     curr_x: u32,
@@ -42,17 +42,17 @@ enum BGScreenblockSlots {
     Three,
 }
 
-impl<'a> LargeBackground<'a> {
+impl LargeBackground {
     /// Create a new `LargeBackground`.
     /// and initialize the backing backgrounds by writing data to VRAM/background PALRAM.
     ///
     /// center_x and center_y are the coordinates for where to initially place the center of the displayed area.
     /// The coordinate system starts at the top-left corner.
     pub(crate) fn init(
-        tiles: &'a [u32],
-        backing_tilemaps: Vec<Vec<&'a [u8]>>,
-        palette: &'a [u16],
-    ) -> LargeBackground<'a> {
+        tiles: &'static [u32],
+        backing_tilemaps: Vec<Vec<&'static [u8]>>,
+        palette: &'static [u16],
+    ) -> LargeBackground {
         // Ensure we have at least 1 backing tilemap
         if backing_tilemaps.is_empty() {
             panic!("No backing tilemaps supplied");
@@ -62,7 +62,7 @@ impl<'a> LargeBackground<'a> {
             panic!("No backing tilemaps supplied");
         }
 
-        let mut lbg: LargeBackground<'a> = LargeBackground {
+        let mut lbg: LargeBackground = LargeBackground {
             backing_tilemaps,
             curr_x: 0,
             curr_y: 0,

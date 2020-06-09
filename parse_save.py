@@ -6,6 +6,9 @@ from typing import Dict, Tuple, List
 import codecs
 import py2jdbc.mutf8
 from PIL import Image
+import os
+from enum import IntEnum, auto
+
 
 # Header (4 bytes)
 # Version (4 bytes)
@@ -54,125 +57,173 @@ from PIL import Image
 #       *
 #
 
-BLOCKS = {
-    # Actually air
-    0: "titanium2",
-    # Actually spawn
-    1: "titanium1",
-    2: "deepwater",
-    3: "water",
-    4: "tainted-water",
-    5: "tar",
-    6: "stone1",
-    7: "craters1",
-    8: "char1",
-    9: "sand1",
-    10: "darksand1",
-    11: "ice1",
-    12: "snow1",
-    13: "darksand-tainted-water",
-    14: "holostone1",
-    15: "rocks1",
-    16: "sporerocks1",
-    17: "icerocks1",
-    18: "cliffs1",
-    19: "spore-pine",
-    20: "snow-pine",
-    21: "pine",
-    22: "shrubs1",
-    23: "white-tree",
-    24: "white-tree-dead",
-    25: "spore-cluster1",
-    26: "ice-snow1",
-    27: "sand-water",
-    28: "darksand-water",
-    29: "dunerocks1",
-    30: "sandrocks1",
-    31: "moss1",
-    32: "spore-moss1",
-    33: "shale1",
-    34: "shalerocks1",
-    35: "shale-boulder1",
-    36: "sand-boulder1",
-    37: "grass1",
-    38: "salt",
-    39: "metal-floor",
-    40: "metal-floor-damaged1",
-    41: "metal-floor-2",
-    42: "metal-floor-3",
-    43: "metal-floor-5",
-    44: "ignarock1",
-    45: "magmarock1",
-    46: "hotrock1",
-    47: "snowrocks1",
-    48: "rock1",
-    49: "snowrock1",
-    50: "saltrocks1",
-    51: "dark-panel-1",
-    52: "dark-panel-2",
-    53: "dark-panel-3",
-    54: "dark-panel-4",
-    55: "dark-panel-5",
-    56: "dark-panel-6",
-    57: "dark-metal1",
-    58: "pebbles1",
-    59: "tendrils1",
-    60: "copper1",
-    61: "lead1",
-    62: "scrap1",
-    63: "coal1",
-    64: "titanium1",
-    65: "thorium1",
-    66: "silicon-smelter",
-    67: "kiln",
-    68: "graphite-press",
-    69: "plastanium-compressor",
-    70: "multi-press",
-    71: "phase-weaver",
-    72: "alloy-smelter",
-    73: "pyratite-mixer",
-    74: "blast-mixer",
-    75: "cryofluidmixer-top",
-    76: "melter",
-    77: "separator",
-    78: "spore-press",
-    79: "pulverizer",
-    80: "incinerator",
-    81: "coal-centrifuge",
-    82: "power-source",
-    83: "power-void",
-    84: "item-source",
-    85: "item-void",
-    86: "liquid-source",
-    87: "liquid-void",
-    88: "message",
-    89: "illuminator",
-    90: "copper-wall",
-    91: "copper-wall-large",
-    92: "titanium-wall",
-    93: "titanium-wall-large",
-    94: "plastanium-wall",
-    95: "plastanium-wall-large",
-    96: "thorium-wall",
-    97: "thorium-wall-large",
-    98: "door",
-    99: "door-large",
-    100: "phase-wall",
-    101: "phase-wall-large",
-    102: "surge-wall",
-    103: "surge-wall-large",
-    104: "mender",
-    105: "mend-projector",
-    106: "overdrive-projector",
-    107: "force-projector",
-    108: "shock-mine",
-    109: "scrap-wall1",
-    111: "scrap-wall-large1",
-    112: "scrap-wall-huge1",
-    113: "scrap-wall-gigantic",
-    114: "thruster",
-}
 
+BLOCK_NAMES: List[str] = [
+    # Actually air
+    "titanium2",
+    # Actually spawn
+    "titanium1",
+    "deepwater",
+    "water",
+    "tainted-water",
+    "tar",
+    "stone1",
+    "craters1",
+    "char1",
+    "sand1",
+    "darksand1",
+    "ice1",
+    "snow1",
+    "darksand-tainted-water",
+    "holostone1",
+    "rocks1",
+    "sporerocks1",
+    "icerocks1",
+    "cliffs1",
+    "spore-pine",
+    "snow-pine",
+    "pine",
+    "shrubs1",
+    "white-tree",
+    "white-tree-dead",
+    "spore-cluster1",
+    "ice-snow1",
+    "sand-water",
+    "darksand-water",
+    "dunerocks1",
+    "sandrocks1",
+    "moss1",
+    "spore-moss1",
+    "shale1",
+    "shalerocks1",
+    "shale-boulder1",
+    "sand-boulder1",
+    "grass1",
+    "salt",
+    "metal-floor",
+    "metal-floor-damaged1",
+    "metal-floor-2",
+    "metal-floor-3",
+    "metal-floor-5",
+    "ignarock1",
+    "magmarock1",
+    "hotrock1",
+    "snowrocks1",
+    "rock1",
+    "snowrock1",
+    "saltrocks1",
+    "dark-panel-1",
+    "dark-panel-2",
+    "dark-panel-3",
+    "dark-panel-4",
+    "dark-panel-5",
+    "dark-panel-6",
+    "dark-metal1",
+    "pebbles1",
+    "tendrils1",
+    "copper1",
+    "lead1",
+    "scrap1",
+    "coal1",
+    "titanium1",
+    "thorium1",
+    "silicon-smelter",
+    "kiln",
+    "graphite-press",
+    "plastanium-compressor",
+    "multi-press",
+    "phase-weaver",
+    "alloy-smelter",
+    "pyratite-mixer",
+    "blast-mixer",
+    "cryofluidmixer-top",
+    "melter",
+    "separator",
+    "spore-press",
+    "pulverizer",
+    "incinerator",
+    "coal-centrifuge",
+    "power-source",
+    "power-void",
+    "item-source",
+    "item-void",
+    "liquid-source",
+    "liquid-void",
+    "message",
+    "illuminator",
+    "copper-wall",
+    "copper-wall-large",
+    "titanium-wall",
+    "titanium-wall-large",
+    "plastanium-wall",
+    "plastanium-wall-large",
+    "thorium-wall",
+    "thorium-wall-large",
+    "door",
+    "door-large",
+    "phase-wall",
+    "phase-wall-large",
+    "surge-wall",
+    "surge-wall-large",
+    "mender",
+    "mend-projector",
+    "overdrive-projector",
+    "force-projector",
+    "shock-mine",
+    "scrap-wall1",
+    "scrap-wall-large1",
+    "scrap-wall-huge1",
+    "scrap-wall-gigantic",
+    "thruster",
+    # conveyor multiple versions
+    "conveyor-0-0",
+    "titanium-conveyor",
+    "armored-conveyor",
+    "distributor",
+    "junction",
+    # itemBridge multiple versions
+    "phase-conduit-bridge",
+    "phase-conveyor",
+    "sorter",
+    "inverted-sorter",
+    "router",
+    "overflow-gate",
+    "underflow-gate",
+    "mass-driver",
+    "mechanical-pump",
+    "rotary-pump",
+    "thermal-pump",
+    # conduit multiple versions
+    "conduit-top-0",
+    # pulseConduit multiple versions
+    "pulse-conduit-top-0",
+    # platedConduit multiple versions
+    "plated-conduit-top-0",
+    # liquidRouter multiple versions
+    "liquid-router-top",
+    # liquidTank multiple versoins
+    "liquid-tank-top",
+    "liquid-junction",
+    "bridge-conduit",
+    "phase-conduit",
+    "combustion-generator",
+    "thermal-generator",
+    "turbine-generator",
+    "differential-generator",
+    "rtg-generator",
+    "solar-panel",
+    "large-solar-panel",
+    "thorium-reactor",
+    "impact-reactor",
+    "battery",
+    "battery-large",
+    "power-node",
+    "power-node-large",
+    "surge-tower",
+    "diode1",
+]
+
+BLOCKS: Dict[int, str] = {i: k for (i, k) in enumerate(BLOCK_NAMES)}
 
 """
 class Block(IntEnum):
@@ -236,8 +287,11 @@ def read_msav_header(data: bytearray) -> bytearray:
 
 def read_version(data: bytearray) -> bytearray:
     version = int.from_bytes(data[:4], byteorder="big", signed=False)
-    assert version == 2
-    print("Version: {}".format(version))
+    if not version == 2:
+        print("Unknown map format version: {}".format(version))
+        raise Exception("Unknown map format version")
+    else:
+        print("Version: {}".format(version))
     return data[4:]
 
 
@@ -258,7 +312,7 @@ def read_metadata(data: bytearray) -> Tuple[Dict[str, str], bytearray]:
         # Read map value
         (value, data) = utf8m_java_to_utf8(data)
         metadata[key] = value
-    print("Metadata: {}".format(metadata))
+    # print("Metadata: {}".format(metadata))
     return (metadata, data)
 
 
@@ -275,7 +329,7 @@ def read_content(data: bytearray) -> bytearray:
         for _ in range(0, total):
             # Read a string and discard it
             (content_string, data) = utf8m_java_to_utf8(data)
-            print(content_string)
+            # print(content_string)
     return data
 
 
@@ -345,75 +399,75 @@ def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
     return (utf8_string, data[length:])
 
 
-def floor_ids_to_png(width: int, height: int, floor_ids: List[List[int]]):
+def floor_ids_to_png(
+    width: int, height: int, floor_ids: List[List[int]], png_path: str
+):
     # Create image with appropriate size
     # Map names to filenames
+    import glob
+
     images = dict()
     root_directory = "Mindustry/core/assets-raw/sprites/blocks/"
-    for key in BLOCKS.keys():
-        directory = root_directory
-        if key <= 59:
-            directory = "{}environment/".format(root_directory)
-        # Ores
-        elif key <= 65:
-            directory = "{}environment/".format(root_directory)
-        elif key <= 81:
-            directory = "{}production/".format(root_directory)
-        elif key <= 83:
-            directory = "{}power/".format(root_directory)
-        elif key <= 87:
-            directory = "{}production/".format(root_directory)
-        elif key == 88:
-            directory = "{}extra/".format(root_directory)
-        elif key == 89:
-            directory = "{}power/".format(root_directory)
-        elif key <= 103:
-            directory = "{}walls/".format(root_directory)
-        elif key <= 108:
-            directory = "{}defense/".format(root_directory)
-        elif key <= 114:
-            directory = "{}walls/".format(root_directory)
-        filename = "{}{}.png".format(directory, BLOCKS[key])
-        img = Image.open(filename)
-        images[BLOCKS[key]] = img
+    for key in range(0, len(BLOCKS)):
+        filename = "{}.png".format(BLOCKS[key])
+        # Find out in which subdir the file resides
+        matches = glob.glob(root_directory + "/**/" + filename, recursive=True)
+        # print(matches)
+        try:
+            img = Image.open(matches[0])
+            images[BLOCKS[key]] = img
+        except Exception:
+            print("No such file: {}".format(BLOCKS[key]))
 
     map_img = Image.new(size=(width * 16, height * 16), mode="RGBA")
     for (i, col) in enumerate(floor_ids):
-        print("{}".format(len(col)))
+        # print("{}".format(len(col)))
         for (j, floor_id) in enumerate(col):
             # Find filename for given tile
-            floor_name = BLOCKS[floor_id]
-            # Load the image and put it into the correct place in the bigger map image
-            print(floor_name)
+            if floor_id not in BLOCKS.keys():
+                print("Unknown floor block with ID: {}, substituting".format(floor_id))
+                # Placeholder until bug is fixed
+                # TODO: Remove
+                floor_name = BLOCKS[0]
+            else:
+                floor_name = BLOCKS[floor_id]
             img = images[floor_name]
             map_img.paste(im=img, box=(i * 16, j * 16))
-    map_img.save(fp="map.png", format="png")
-    map_img.show()
+    map_img.save(fp=png_path, format="png")
+
+
+def map_file_to_map(path: str) -> str:
+    with open(path, "rb") as f:
+        print("Decompressing...")
+        decompressed = zlib.decompress(f.read())
+        with open("decompressed", "wb") as f2:
+            f2.write(decompressed)
+        savedata = bytearray(decompressed)
+        print("Reading header")
+        savedata = read_msav_header(savedata)
+        print("Reading version")
+        savedata = read_version(savedata)
+        print("Reading metadata")
+        (metadata, savedata) = read_metadata(savedata)
+        with open("post-metadata", "wb") as f3:
+            f3.write(savedata)
+        print("Reading content")
+        savedata = read_content(savedata)
+        print("Reading actual map data...")
+        (width, height, floor_ids, ore_ids, _, savedata) = read_map(savedata)
+        print("Width: {}, height: {}".format(width, height))
+        print("Converting to PNG")
+        # TODO: Tempdir
+        png_path = "{}-map.png".format(os.path.splitext(path)[0])
+        floor_ids_to_png(width, height, floor_ids, png_path)
+        return png_path
 
 
 # Register java's modified UTF-8 as string codec
 codecs.register(py2jdbc.mutf8.info)
 
-print(sys.argv)
-if len(sys.argv) != 2:
-    raise Exception("Usage: ./parse-save.py <savefile>")
-with open(sys.argv[1], "rb") as f:
-    print("Decompressing...")
-    decompressed = zlib.decompress(f.read())
-    with open("decompressed", "wb") as f2:
-        f2.write(decompressed)
-    savedata = bytearray(decompressed)
-    print("Reading header")
-    savedata = read_msav_header(savedata)
-    print("Reading version")
-    savedata = read_version(savedata)
-    print("Reading metadata")
-    (metadata, savedata) = read_metadata(savedata)
-    with open("post-metadata", "wb") as f3:
-        f3.write(savedata)
-    print("Reading content")
-    savedata = read_content(savedata)
-    print("Reading actual map data...")
-    (width, height, floor_ids, ore_ids, _, savedata) = read_map(savedata)
-    print("Width: {}, height: {}".format(width, height))
-    floor_ids_to_png(width, height, floor_ids)
+if __name__ == "__main__":
+    print(sys.argv)
+    if len(sys.argv) != 2:
+        raise Exception("Usage: ./parse-save.py <savefile>")
+    map_file_to_map(sys.argv[1])

@@ -1,13 +1,14 @@
 use crate::components::SpriteComponent;
 use crate::debug_log::*;
 use crate::entities;
-use crate::map::Map;
+use crate::map::{Map, Maps};
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{InputSystem, MovementSystem};
 use crate::text::TextEngine;
 
 use crate::FS;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
@@ -15,16 +16,16 @@ use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
 #[allow(dead_code)] // Some struct fields not used after construction right now, remove once changed
-pub(crate) struct Game<'a> {
+pub(crate) struct Game {
     sprite_alloc: HWSpriteAllocator,
-    map: Map<'a>,
+    map: Box<Map>,
     entities: Entities,
     live_entity_ids: Vec<usize>,
     input_system: InputSystem,
     text_engine: TextEngine,
 }
 
-impl<'a> Game<'a> {
+impl Game {
     pub(crate) fn run(&mut self) {
         loop {
             self.update();
@@ -35,7 +36,7 @@ impl<'a> Game<'a> {
     }
 
     /// Creates and initializes a new game.
-    pub fn init() -> Game<'a> {
+    pub fn init() -> Game {
         debug_log!(Subsystems::Game, "Loading game data from FS");
 
         // Initialize hardware sprite management
@@ -49,7 +50,9 @@ impl<'a> Game<'a> {
         sprite_allocator.init();
 
         // Create a map
-        let map = Map::load_test_map_from_fs();
+        let mut maps = Maps::read_map_data();
+        let map_entry = maps.maps.pop().unwrap();
+        let map = map_entry.get_map().clone();
 
         // Ensure sprites are visible
         DISPCNT.write(DISPCNT.read().with_obj(true).with_oam_memory_1d(true));
