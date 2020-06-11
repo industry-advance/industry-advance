@@ -4,6 +4,7 @@ let
   grit = import ./grit.nix { inherit sources; };
   gba-tools = import ./gba-tools.nix { inherit sources; };
   py2jdbc = import ./py2jdbc.nix { inherit sources; };
+  dataclasses-json = import ./dataclasses-json.nix { inherit sources; };
   nixpkgs = import sources.nixpkgs { };
 in {
   # List of packages which are needed both for testing and CI.
@@ -33,5 +34,6 @@ in {
     nixpkgs.python37Packages.pillow
     nixpkgs.python37Packages.fonttools
     py2jdbc
+    dataclasses-json
   ];
 }

@@ -20,7 +20,10 @@ import os
 import pathlib
 import subprocess
 import tempfile
-from typing import List
+import json
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
+from typing import List, Tuple
 
 # Directory containing sprites to be processed
 SPRITES_IN_DIR = "Mindustry/core/assets-raw/sprites/"
@@ -109,6 +112,25 @@ def convert_sprites(sprite_paths: List[str]):
     )
 
 
+def convert_fonts():
+    temp_dir: str = tempfile.TemporaryDirectory().name
+    pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
+    char_file = pathlib.Path(temp_dir).joinpath("font_chars.txt")
+    img_file = pathlib.Path(temp_dir).joinpath("font.png")
+    preparefont.convert_ttf_font(TTF_FONT_PATH, char_file, img_file)
+    # Insert character list into FS (they're ordered in the same order as in the img)
+    # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
+    subprocess.run(check=True, args=["gbfs", "assets.gbfs", char_file])
+    # Run grit to actually convert glyphs
+    subprocess.run(
+        "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+            img_file
+        ),
+        shell=True,
+        check=True,
+    )
+
+
 def get_map_paths() -> List[str]:
     map_paths: List[str] = list()
 
@@ -119,13 +141,11 @@ def get_map_paths() -> List[str]:
     return map_paths
 
 
-"""
-As the GBA doesn't support infinite-sized maps, this function
-splits them into 32x32 tile (256x256 px) chunks.
-"""
-
-
 def split_maps_into_chunks(in_paths: List[str]) -> List[str]:
+    """
+    As the GBA doesn't support infinite-sized maps, this function
+    splits them into 32x32 tile (256x256 px) chunks.
+    """
     out_paths: List[str] = list()
     for path in in_paths:
         split_map_dir: str = tempfile.TemporaryDirectory().name
@@ -137,6 +157,9 @@ def split_maps_into_chunks(in_paths: List[str]) -> List[str]:
 
 
 def pad_maps(map_paths: List[str]) -> List[str]:
+    """
+    Pads the map to multiple of 256x256 pixels and returns paths of padded images.
+    """
     new_paths = list()
     for m in map_paths:
         new_paths.append(pad.pad_map(m))
@@ -158,37 +181,87 @@ def convert_maps_via_grit(map_paths: List[str]):
     )
 
 
-def convert_mindustry_maps_to_png(map_paths: List[str]) -> List[str]:
+def convert_mindustry_maps_to_png(
+    map_paths: List[str],
+) -> Tuple[List[str], List[Tuple[int, int, str]]]:
+    """
+    Converts .msav maps to PNGs.
+    Returns tuple containing list of PNG filenames, as well as another list of tuples
+    containing width, height and name of each map.
+    """
     # Maps that we can't parse (yet)
+    # Usually because the map format version is unsupported
     map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav"]
-    png_paths = list()
+    metadata: List[Tuple[int, int, str]] = list()
+    png_paths: List[str] = list()
     for m in map_paths:
         if m in map_blacklist:
             print("Blacklisted map, returning nothing for map")
             continue
         print("Converting map: {}".format(m))
-        png_path = parse_save.map_file_to_map(m)
+        (width, height, name, png_path) = parse_save.map_file_to_map(m)
         png_paths.append(png_path)
-    return png_paths
+        metadata.append((width, height, name))
+    return (png_paths, metadata)
 
 
-def convert_fonts():
-    temp_dir: str = tempfile.TemporaryDirectory().name
-    pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
-    char_file = pathlib.Path(temp_dir).joinpath("font_chars.txt")
-    img_file = pathlib.Path(temp_dir).joinpath("font.png")
-    preparefont.convert_ttf_font(TTF_FONT_PATH, char_file, img_file)
-    # Insert character list into FS (they're ordered in the same order as in the img)
-    # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
-    subprocess.run(check=True, args=["gbfs", "assets.gbfs", char_file])
-    # Run grit to actually convert glyphs
-    subprocess.run(
-        "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
-            img_file
-        ),
-        shell=True,
-        check=True,
-    )
+# These are used for JSON serialization
+# Structure mirrors the one seen in map.rs
+@dataclass_json
+@dataclass
+class MapChunk:
+    filename: str
+
+
+@dataclass_json
+@dataclass
+class MapEntry:
+    name: str
+    height: int
+    width: int
+    chunks: List[MapChunk]
+
+
+@dataclass_json
+@dataclass
+class Maps:
+    maps: List[MapEntry]
+
+
+def convert_maps():
+    """
+    Converts maps to industry-advance format.
+    """
+    maps: Maps = Maps(maps=list())
+    map_paths = get_map_paths()
+    (map_png_paths, metadata) = convert_mindustry_maps_to_png(map_paths)
+    padded_map_png_paths = pad_maps(map_png_paths)
+    split_map_png_paths = list()
+    for i, map_png in enumerate(padded_map_png_paths):
+        split_map_paths = split_maps_into_chunks([map_png])
+        split_map_png_paths.extend(split_map_paths)
+
+        map_chunks: List[MapChunk] = list()
+        # We assume a particular grit naming scheme here
+        for split in split_map_paths:
+            # FIXME: Correct name
+            grit_filename: str = "DEADBEEF"
+            map_chunks.append(MapChunk(filename=grit_filename))
+
+        map_entry: MapEntry = MapEntry(
+            width=metadata[i][0],
+            height=metadata[i][1],
+            name=metadata[i][2],
+            chunks=map_chunks,
+        )
+        maps.maps.append(map_entry)
+
+    convert_maps_via_grit(split_map_png_paths)
+
+    # JSON file containing map metadata
+    with open("maps.json", "w") as f:
+        print(json.dumps(maps))
+        f.write(json.dumps(maps))
 
 
 def main():
@@ -202,15 +275,7 @@ def main():
     convert_sprites(padded_sprite_paths)
 
     print("----Converting maps...----")
-    map_paths = get_map_paths()
-    print("Map paths: {}".format(map_paths))
-    map_png_paths = convert_mindustry_maps_to_png(map_paths)
-    print(f"map_png_paths: {map_png_paths}")
-    padded_map_png_paths = pad_maps(map_png_paths)
-    print(padded_map_png_paths)
-    print(f"padded_map_png_paths: {padded_map_png_paths}")
-    split_map_paths = split_maps_into_chunks(padded_map_png_paths)
-    convert_maps_via_grit(split_map_paths)
+    convert_maps()
 
 
 if __name__ == "__main__":

@@ -436,12 +436,14 @@ def floor_ids_to_png(
     map_img.save(fp=png_path, format="png")
 
 
-def map_file_to_map(path: str) -> str:
+def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
+    """
+    Converts a mindustry .msav map to PNG.
+    Returns tuple containing width, height, map name and path to PNG.
+    """
     with open(path, "rb") as f:
         print("Decompressing...")
         decompressed = zlib.decompress(f.read())
-        with open("decompressed", "wb") as f2:
-            f2.write(decompressed)
         savedata = bytearray(decompressed)
         print("Reading header")
         savedata = read_msav_header(savedata)
@@ -449,8 +451,6 @@ def map_file_to_map(path: str) -> str:
         savedata = read_version(savedata)
         print("Reading metadata")
         (metadata, savedata) = read_metadata(savedata)
-        with open("post-metadata", "wb") as f3:
-            f3.write(savedata)
         print("Reading content")
         savedata = read_content(savedata)
         print("Reading actual map data...")
@@ -460,7 +460,7 @@ def map_file_to_map(path: str) -> str:
         # TODO: Tempdir
         png_path = "{}-map.png".format(os.path.splitext(path)[0])
         floor_ids_to_png(width, height, floor_ids, png_path)
-        return png_path
+        return (width, height, metadata["name"], png_path)
 
 
 # Register java's modified UTF-8 as string codec
