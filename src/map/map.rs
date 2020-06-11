@@ -94,7 +94,7 @@ pub struct MapChunk {
 
 impl Maps {
     const MAPS_PATH: &'static str = "maps.json";
-    const MAPS_SHARED_PAL: &'static str = "map_shared_pal";
+    const MAPS_SHARED_PAL: &'static str = "map_sharedPal";
     const MAPS_SHARED_TILES: &'static str = "map_sharedTiles";
 
     /// Reads from the default map description file.

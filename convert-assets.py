@@ -19,8 +19,9 @@ import parse_save
 import os
 import pathlib
 import subprocess
+import shutil
 import tempfile
-import json
+
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from typing import List, Tuple
@@ -110,6 +111,29 @@ def convert_sprites(sprite_paths: List[str]):
         shell=True,
         check=True,
     )
+
+
+def insert_into_gbfs(gbfs_path: str, file_path: str):
+    """
+    Insert a file into the given, preexisting GBFS archive.
+    """
+    # The GBFS distribution provides no tooling for appending files to an archive,
+    # so we have to extract and repack instead.
+    temp_dir: str = tempfile.TemporaryDirectory().name
+    pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
+    old_workdir = os.getcwd()
+    absolute_gbfs_path = os.path.abspath(gbfs_path)
+    absolute_file_path = os.path.abspath(file_path)
+    os.chdir(temp_dir)
+    subprocess.run(check=True, args=["ungbfs", absolute_gbfs_path])
+    shutil.copy2(absolute_file_path, temp_dir)
+    # Pack back up
+    all_files = os.listdir(temp_dir)
+    # Have to do this in 2 steps, or we get "Invalid cross-device link"
+    subprocess.run(check=True, args=["gbfs", "temp.gbfs"] + all_files)
+    shutil.copy2("temp.gbfs", absolute_gbfs_path)
+
+    os.chdir(old_workdir)
 
 
 def convert_fonts():
@@ -244,8 +268,10 @@ def convert_maps():
         map_chunks: List[MapChunk] = list()
         # We assume a particular grit naming scheme here
         for split in split_map_paths:
-            # FIXME: Correct name
-            grit_filename: str = "DEADBEEF"
+            # For whatever reason, grit replaces "-" with "_"
+            grit_filename: str = "{}Map".format(
+                os.path.splitext(os.path.basename(split))[0].replace("-", "_")
+            )
             map_chunks.append(MapChunk(filename=grit_filename))
 
         map_entry: MapEntry = MapEntry(
@@ -260,8 +286,9 @@ def convert_maps():
 
     # JSON file containing map metadata
     with open("maps.json", "w") as f:
-        print(json.dumps(maps))
-        f.write(json.dumps(maps))
+        print(maps.to_json())
+        f.write(maps.to_json())
+    insert_into_gbfs("assets.gbfs", "maps.json")
 
 
 def main():
