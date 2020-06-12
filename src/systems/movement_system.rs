@@ -50,6 +50,7 @@ impl MovementSystem {
 
                 // Process updates to entity positions
                 if ecs.entity_contains::<PositionComponent>(id) {
+                    // FIXME: Player should only change position when scroll allows them to
                     let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
                     update_position_based_on_movement(e_movement, e_position);
                 }
@@ -67,7 +68,7 @@ impl MovementSystem {
                     // Subtract the number of whole pixels we can scroll from the accumulated movement
                     let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
                     // Map scrolling happens in the opposite direction to where the player's moving
-                    map.scroll(map_delta_x, map_delta_y);
+                    map.try_scroll(map_delta_x, map_delta_y);
                     // We also have to scroll all other sprites along with the map
                 }
 

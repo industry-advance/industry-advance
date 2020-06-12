@@ -1,7 +1,7 @@
 use super::background::LargeBackground;
 
 use crate::debug_log::Subsystems;
-use crate::shared_constants::SCREENBLOCK_SIZE_BYTES;
+use crate::shared_constants::{SCREENBLOCK_SIZE_BYTES, SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::FS;
 
 use core::str;
@@ -72,10 +72,27 @@ impl Map {
     }
 
     /// Scroll the map by xy pixels.
-    pub fn scroll(&mut self, x: i32, y: i32) {
+    /// If scrolling would make an out-of-bounds area visible, the scroll is not performed
+    /// and false is returned.
+    pub fn try_scroll(&mut self, x: i32, y: i32) -> bool {
+        // Optimization: No point in checking anything if no movement occurs
         if x != 0 || y != 0 {
+            // Bounds check: Both corners must have positive coords after scroll
+            let (curr_x, curr_y) = self.bg.get_top_left_corner_coords();
+            let curr_x = curr_x as i32;
+            let curr_y = curr_y as i32;
+            let curr_bottom_right_x = curr_x + SCREEN_WIDTH as i32;
+            let curr_bottom_right_y = curr_y + SCREEN_HEIGHT as i32;
+            if curr_x + x < 0
+                || curr_y + y < 0
+                || curr_bottom_right_x as i32 + x < 0
+                || curr_bottom_right_y as i32 + y < 0
+            {
+                return false;
+            }
             self.bg.scroll(x, y);
         }
+        return true;
     }
 }
 
