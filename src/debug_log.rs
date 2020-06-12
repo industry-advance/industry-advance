@@ -19,6 +19,7 @@ pub enum Subsystems {
     InputSystem,
     MovementSystem,
     Text,
+    Map,
 }
 
 impl Subsystems {
@@ -32,11 +33,13 @@ impl Subsystems {
             InputSystem => "INPUT SYSTEM",
             MovementSystem => "MOVEMENT SYSTEM",
             Text => "TEXT",
+            Map => "MAP",
         }
     }
 }
 /// List of subsystems to enable logging for
-pub const ENABLED_SUBSYSTEMS: [Subsystems; 2] = [Subsystems::Main, Subsystems::Game];
+pub const ENABLED_SUBSYSTEMS: [Subsystems; 3] =
+    [Subsystems::Main, Subsystems::Game, Subsystems::Map];
 
 #[macro_export]
 macro_rules! debug_log {

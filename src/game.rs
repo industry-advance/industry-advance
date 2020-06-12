@@ -50,9 +50,10 @@ impl Game {
         sprite_allocator.init();
 
         // Create a map
-        let mut maps = Maps::read_map_data();
-        let map_entry = maps.maps.pop().unwrap();
-        let map = map_entry.get_map().clone();
+        let maps = Maps::read_map_data();
+        let map_entry = maps.get_by_name("craters").unwrap();
+        debug_log!(Subsystems::Game, "Loading map {}", map_entry.name);
+        let map = map_entry.get_map();
 
         // Ensure sprites are visible
         DISPCNT.write(DISPCNT.read().with_obj(true).with_oam_memory_1d(true));

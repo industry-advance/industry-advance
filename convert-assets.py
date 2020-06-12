@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from typing import List, Tuple
 
+from PIL import Image
+
 # Directory containing sprites to be processed
 SPRITES_IN_DIR = "Mindustry/core/assets-raw/sprites/"
 # Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need
@@ -274,9 +276,14 @@ def convert_maps():
             )
             map_chunks.append(MapChunk(filename=grit_filename))
 
+        # Get size of map (in tiles)
+        img = Image.open(map_png)
+        width, height = img.size
+        width = width // 32
+        height = height // 32
         map_entry: MapEntry = MapEntry(
-            width=metadata[i][0],
-            height=metadata[i][1],
+            width=width,
+            height=height,
             name=metadata[i][2],
             chunks=map_chunks,
         )

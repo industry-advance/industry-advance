@@ -1,5 +1,6 @@
 use super::background::LargeBackground;
 
+use crate::debug_log::Subsystems;
 use crate::shared_constants::SCREENBLOCK_SIZE_BYTES;
 use crate::FS;
 
@@ -30,6 +31,13 @@ impl Map {
         tiles: &'static [u32],
         tilemaps: Vec<&'static [u8]>,
     ) -> Map {
+        debug_log!(
+            Subsystems::Map,
+            "Creating map with {}x{} tilemaps, with {} tiles total",
+            x_size_in_tilemaps,
+            y_size_in_tilemaps,
+            tilemaps.len()
+        );
         for tilemap in tilemaps.clone() {
             assert_eq!(tilemap.len(), SCREENBLOCK_SIZE_BYTES);
         }
@@ -77,12 +85,28 @@ pub struct Maps {
     pub maps: Vec<MapEntry>,
 }
 
+impl Maps {
+    //! Returns a MapEntry with the given name or None.
+    pub fn get_by_name(&self, name: &str) -> Option<MapEntry> {
+        let map = self.maps.iter().filter(|map| map.name == name).next();
+
+        // We have to dereference the reference inside the Option
+        match map {
+            Some(ptr) => Some(ptr.clone()),
+            None => None,
+        }
+    }
+}
 /// Describes single map.
 #[derive(Deserialize, Clone)]
 pub struct MapEntry {
-    name: String,
+    // Map display name
+    pub name: String,
+    // height in tiles
     height: usize,
+    // width in tiles
     width: usize,
+    // list of chunks belonging to map
     chunks: Vec<MapChunk>,
 }
 
@@ -130,6 +154,7 @@ impl MapEntry {
             )
             .unwrap();
 
+        // Calculate size in chunks
         let height = self.height / 32;
         let width = self.width / 32;
         return Box::new(Map::new_map(pal, width, height, tiles, tilemaps));
