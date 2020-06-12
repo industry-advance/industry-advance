@@ -1,4 +1,6 @@
-use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
+use crate::components::{
+    InputComponent, InventoryComponent, MovementComponent, PositionComponent, SpriteComponent,
+};
 use crate::debug_log::*;
 use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::shared_types::Coordinate;
@@ -8,7 +10,7 @@ use tiny_ecs::{ECSError, Entities};
 /// Middle of the screen should be middle of sprite as well
 const INITIAL_PLAYER_ONSCREEN_POS_X: u16 = (SCREEN_WIDTH / 2 - 32 / 2) as u16;
 const INITIAL_PLAYER_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2 - 32 / 2) as u16;
-
+const PLAYER_INVENTORY_CAPACITY: usize = 64;
 /// Adds a player to the ECS.
 /// The player accepts user input and the camera stays centered on it's sprite.
 pub(crate) fn add_player(
@@ -29,6 +31,7 @@ pub(crate) fn add_player(
         ))?
         .with(movement_component)?
         .with(InputComponent::new())?
+        .with(InventoryComponent::new(PLAYER_INVENTORY_CAPACITY))?
         // Place player in the middle of the screen
         .with(PositionComponent::with_pos((
             Coordinate::from_num(INITIAL_PLAYER_ONSCREEN_POS_X),
