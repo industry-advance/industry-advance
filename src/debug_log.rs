@@ -17,6 +17,7 @@ pub enum Subsystems {
     Entity,
     HWSprite,
     InputSystem,
+    InventorySystem,
     MovementSystem,
     Text,
     Map,
@@ -31,6 +32,7 @@ impl Subsystems {
             Entity => "ENTITY",
             HWSprite => "HW SPRITE",
             InputSystem => "INPUT SYSTEM",
+            InventorySystem => "INVENTORY SYSTEM",
             MovementSystem => "MOVEMENT SYSTEM",
             Text => "TEXT",
             Map => "MAP",
@@ -38,8 +40,11 @@ impl Subsystems {
     }
 }
 /// List of subsystems to enable logging for
-pub const ENABLED_SUBSYSTEMS: [Subsystems; 3] =
-    [Subsystems::Main, Subsystems::Game, Subsystems::Map];
+pub const ENABLED_SUBSYSTEMS: [Subsystems; 3] = [
+    Subsystems::Main,
+    Subsystems::Game,
+    Subsystems::InventorySystem,
+];
 
 #[macro_export]
 macro_rules! debug_log {

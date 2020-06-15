@@ -1,4 +1,5 @@
 use crate::components::miner_component::MiningProgress;
+use crate::components::ItemSourceComponent;
 use crate::components::{MinerComponent, PositionComponent, SpriteComponent};
 use crate::debug_log::*;
 use crate::item::Item;
@@ -11,6 +12,7 @@ use tiny_ecs::{ECSError, Entities};
 pub(crate) fn add_mechanical_drill(
     entities: &mut Entities,
     sprite_alloc: &mut HWSpriteAllocator,
+    target_inventory_entity_id: usize,
 ) -> Result<usize, ECSError> {
     let entity_id = entities
         .new_entity()
@@ -29,6 +31,10 @@ pub(crate) fn add_mechanical_drill(
         .with(MinerComponent::new(
             Item::Copper,
             MiningProgress::from_num(1),
+        ))?
+        .with(ItemSourceComponent::new(
+            Item::Copper,
+            [Some(target_inventory_entity_id), None, None, None],
         ))?
         .finalise()?;
     debug_log!(Subsystems::Entity, "Created mechanical drill");

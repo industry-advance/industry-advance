@@ -3,7 +3,7 @@ use crate::debug_log::*;
 use crate::entities;
 use crate::map::{Map, Maps};
 use crate::sprite::HWSpriteAllocator;
-use crate::systems::{mining_system, InputSystem, MovementSystem};
+use crate::systems::{item_movement_system, mining_system, InputSystem, MovementSystem};
 use crate::text::TextEngine;
 
 use crate::FS;
@@ -72,8 +72,11 @@ impl Game {
             .expect("Failed to initialize copper wall entity");
         live_entity_ids.push(copper_wall_id);
 
-        // Initialize a miner for testing
-        let miner_id = entities::add_mechanical_drill(&mut e, &mut sprite_allocator)
+        // Initialize a miner and deposit container for testing
+        let container_id = entities::add_container(&mut e, &mut sprite_allocator)
+            .expect("Failed to initialize container entity");
+        live_entity_ids.push(container_id);
+        let miner_id = entities::add_mechanical_drill(&mut e, &mut sprite_allocator, container_id)
             .expect("Failed to initialize mechanical drill entity");
         live_entity_ids.push(miner_id);
 
@@ -109,5 +112,8 @@ impl Game {
 
         // Update miners
         mining_system::tick(&mut self.entities, &self.live_entity_ids);
+
+        // Perform inventory transfers
+        item_movement_system::tick(&mut self.entities);
     }
 }
