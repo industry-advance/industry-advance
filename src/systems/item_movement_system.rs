@@ -38,7 +38,7 @@ pub fn tick(ecs: &mut Entities) {
                 if inventory.check_item_accept(source.dump_item, 1) {
                     inventory
                         .insert(source.dump_item, 1)
-                        .expect("Couldn't insert item into inventory!");
+                        .unwrap();//.expect("Couldn't insert item into inventory!");
                     source.did_transfer = true;
                 } else {
                     debug_log!(

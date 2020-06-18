@@ -6,6 +6,7 @@ use twox_hash::XxHash64;
 
 use alloc::vec::Vec;
 use core::hash::BuildHasherDefault;
+use core::fmt;
 
 /// Describes an inventory.
 pub struct InventoryComponent {
@@ -16,6 +17,12 @@ pub struct InventoryComponent {
     free: usize,
     // Actual inventory contents
     pub contents: HashMap<Item, usize, BuildHasherDefault<XxHash64>>,
+}
+
+// Metadata of ItemTransaction
+pub struct InventoryPartialTransfer {
+    // Amount of items accepted
+    amount: usize,
 }
 
 impl InventoryComponent {
@@ -35,11 +42,14 @@ impl InventoryComponent {
     pub fn insert(&mut self, item: Item, quantity: usize) -> Result<(), InventoryError> {
         // Check that we have space
         if (self.free as i32 - quantity as i32) < 0 {
-            return Err(InventoryError {});
+            if self.free > 0 {
+                return Err(InventoryError::PartialTransfer (self.free));
+            }
+            return Err(InventoryError::Full);
         }
         // Check that the item is on the whitelist, if it exists
         if self.item_whitelist != None && !self.item_whitelist.as_ref().unwrap().contains(&item) {
-            return Err(InventoryError {});
+            return Err(InventoryError::RejectedItemType);
         }
 
         // Actually insert the item by increasing quantity if it's in the map or creating a new entry if not.
@@ -64,13 +74,13 @@ impl InventoryComponent {
     /// Returns an `InventoryError` if inventory does not contain a sufficient amount of the item.
     pub fn retrieve(&mut self, item: Item, quantity: usize) -> Result<(), InventoryError> {
         if !self.contents.contains_key(&item) {
-            return Err(InventoryError {});
+            return Err(InventoryError::InsufficientItems);
         }
 
         let contained_quantity = *self.contents.get(&item).unwrap();
 
         if contained_quantity < quantity {
-            return Err(InventoryError {});
+            return Err(InventoryError::InsufficientItems);
         }
 
         self.contents.insert(item, contained_quantity - quantity);
@@ -90,5 +100,27 @@ impl InventoryComponent {
 }
 
 /// Describes error conditions related to inventory handling.
-#[derive(Debug)]
-pub struct InventoryError {}
+pub enum InventoryError {
+    PartialTransfer(usize),
+    Full,
+    RejectedItemType,
+    InsufficientItems,
+}
+
+impl fmt::Display for InventoryError {
+    fn fmt (&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InventoryError::*;
+        match self {
+            PartialTransfer(amount) => write!(f, "InventoryError: Only {} items could be transferred", amount),
+            Full => write!(f, "InventoryError: Inventory is full"),
+            RejectedItemType => write!(f, "InventoryError: Item is not in whitelist"),
+            InsufficientItems => write!(f, "InventoryError: Inventory does not have the required items"),
+        }
+    }
+}
+
+impl fmt::Debug for InventoryError {
+    fn fmt (&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        return <InventoryError as fmt::Display>::fmt(&self, f);
+    }
+}
