@@ -22,6 +22,7 @@ pub(crate) fn add_mechanical_drill(
             HWSpriteSize::ThirtyTwoByThirtyTwo,
             64,
             64,
+            true
         ))?
         .with(PositionComponent::with_pos((
             Coordinate::from_num(64),

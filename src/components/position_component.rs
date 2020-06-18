@@ -1,5 +1,6 @@
 use crate::shared_types::Position;
 
+#[derive(Clone)]
 pub struct PositionComponent(pub Position);
 
 impl PositionComponent {

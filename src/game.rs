@@ -1,4 +1,6 @@
-use crate::components::SpriteComponent;
+use crate::components::{
+    component_utils::*, InputComponent, MovementComponent, PositionComponent, SpriteComponent,
+};
 use crate::debug_log::*;
 use crate::entities;
 use crate::map::{Map, Maps};
@@ -15,14 +17,25 @@ use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
+#[derive(Debug, PartialEq)]
+enum GameMode {
+    // State in which the player controls the avatar directly and all game systems are ticked.
+    TimeRunning,
+    // State in which the player does not control the avatar, but navigates menus and builds while
+    // the rest of the game logic is paused.
+    TimeStopped,
+}
 #[allow(dead_code)] // Some struct fields not used after construction right now, remove once changed
 pub(crate) struct Game {
     sprite_alloc: HWSpriteAllocator,
     map: Box<Map>,
     entities: Entities,
+    player_id: usize,
+    cursor_id: usize,
     live_entity_ids: Vec<usize>,
     input_system: InputSystem,
     text_engine: TextEngine,
+    game_mode: GameMode,
 }
 
 impl Game {
@@ -67,6 +80,10 @@ impl Game {
             .expect("Failed to initialize player entity");
         live_entity_ids.push(player_id);
 
+        let cursor_id = entities::add_cursor(&mut e, &mut sprite_allocator)
+            .expect("Failed to initialize cursor entity");
+        live_entity_ids.push(cursor_id);
+
         // Initialize a copper wall for testing
         let copper_wall_id = entities::add_copper_wall(&mut e, &mut sprite_allocator)
             .expect("Failed to initialize copper wall entity");
@@ -87,33 +104,122 @@ impl Game {
         drop(components);
 
         // Initialize the text engine
-        let text_engine = TextEngine::with_default_font();
+        let text_engine = TextEngine::with_default_font_and_screenblock();
+
         return Game {
             sprite_alloc: sprite_allocator,
             map,
             entities: e,
+            player_id,
+            cursor_id,
             live_entity_ids,
             input_system: InputSystem::init(),
             text_engine,
+            game_mode: GameMode::TimeRunning,
         };
     }
 
     fn update(&mut self) {
         // Process player input
-        self.input_system
+        let start_pressed = self
+            .input_system
             .tick(&mut self.entities, &self.live_entity_ids)
             .expect("Failed to tick input system");
+        // Start is the button for switching between game modes
+        if start_pressed {
+            use GameMode::*;
+            match self.game_mode {
+                // If we're in stopped mode, we want the camera to follow the cursor,
+                // and we want to take away the player's InputComponent and give it to the cursor.
+                TimeRunning => {
+                    self.game_mode = GameMode::TimeStopped;
+                    // Move the movement component to the cursor
+                    move_component::<MovementComponent>(
+                        self.player_id,
+                        self.cursor_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
 
-        // Simulate
-        MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
-            .expect("Failed to tick movement system");
+                    // Move the input component to the cursor
+                    move_component::<InputComponent>(
+                        self.player_id,
+                        self.cursor_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
 
-        // Update display
+                    // Move the position component to the cursor
+                    move_component::<PositionComponent>(
+                        self.player_id,
+                        self.cursor_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
 
-        // Update miners
-        mining_system::tick(&mut self.entities, &self.live_entity_ids);
+                    // Cursor has to be made visible
+                    let mut sprite_components =
+                        self.entities.borrow_mut::<SpriteComponent>().unwrap();
+                    let mut cursor_sprite_component =
+                        sprite_components.get_mut(self.cursor_id).unwrap();
+                    let mut handle = cursor_sprite_component.get_handle();
+                    handle.set_visibility(true);
+                }
+                TimeStopped => {
+                    self.game_mode = GameMode::TimeRunning;
 
-        // Perform inventory transfers
-        item_movement_system::tick(&mut self.entities);
+                    // Move the movement component back to the player
+                    move_component::<MovementComponent>(
+                        self.cursor_id,
+                        self.player_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
+
+                    // Move the input component back to the player
+                    move_component::<InputComponent>(
+                        self.cursor_id,
+                        self.player_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
+
+                    // Move the position component back to the player
+                    move_component::<PositionComponent>(
+                        self.cursor_id,
+                        self.player_id,
+                        &mut self.entities,
+                    )
+                    .unwrap();
+
+                    // Cursor has to be made invisible again
+                    let mut sprite_components =
+                        self.entities.borrow_mut::<SpriteComponent>().unwrap();
+                    let mut cursor_sprite_component =
+                        sprite_components.get_mut(self.cursor_id).unwrap();
+                    let mut handle = cursor_sprite_component.get_handle();
+                    handle.set_visibility(false);
+                }
+            }
+        }
+
+        // Simulate all game systems
+        if self.game_mode == GameMode::TimeRunning {
+            // Simulate
+            MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
+                .expect("Failed to tick movement system");
+
+            // Update display
+
+            // Update miners
+            mining_system::tick(&mut self.entities, &self.live_entity_ids);
+
+            // Perform inventory transfers
+            item_movement_system::tick(&mut self.entities);
+        // Only simulate systems needed for moving the cursor and building
+        } else {
+            MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
+                .expect("Failed to tick movement system");
+        }
     }
 }

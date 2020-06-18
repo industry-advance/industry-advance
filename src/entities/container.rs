@@ -18,6 +18,7 @@ pub(crate) fn add_container(
             HWSpriteSize::ThirtyTwoByThirtyTwo,
             128,
             128,
+            true
         ))?
         .with(PositionComponent::with_pos((
             Coordinate::from_num(128),

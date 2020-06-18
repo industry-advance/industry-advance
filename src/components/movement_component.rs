@@ -1,6 +1,7 @@
 use crate::shared_types::{Velocity, ZERO_VELOCITY};
 /// This component controls an entity's movement.
 /// Velocity is given in pixels per tick.
+#[derive(Clone)]
 pub(crate) struct MovementComponent {
     /// Whether the entity's position depends on player input.
     pub input_controlled: bool,

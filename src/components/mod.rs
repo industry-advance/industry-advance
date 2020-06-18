@@ -1,4 +1,5 @@
 //! This module contains ECS components.
+pub mod component_utils;
 mod input_component;
 mod inventory_component;
 mod item_source_component;

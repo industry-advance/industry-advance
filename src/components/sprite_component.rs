@@ -5,7 +5,7 @@ pub(crate) struct SpriteComponent {
 }
 
 impl SpriteComponent {
-    /// Initialize a new sprite and make it visible.
+    /// Initialize a new sprite.
     /// The sprite allocator is expected to be initialized.
     pub fn with_pos(
         alloc: &mut HWSpriteAllocator,
@@ -13,11 +13,12 @@ impl SpriteComponent {
         sprite_size: HWSpriteSize,
         x_pos: u16,
         y_pos: u16,
+        is_visible: bool,
     ) -> SpriteComponent {
         let sprite_handle = alloc.alloc_from_fs_file(sprite_filename, sprite_size);
         sprite_handle.set_x_pos(x_pos);
         sprite_handle.set_y_pos(y_pos);
-        sprite_handle.set_visibility(true);
+        sprite_handle.set_visibility(is_visible);
         return SpriteComponent {
             handle: sprite_handle,
         };

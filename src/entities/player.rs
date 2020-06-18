@@ -28,6 +28,7 @@ pub(crate) fn add_player(
             HWSpriteSize::ThirtyTwoByThirtyTwo,
             INITIAL_PLAYER_ONSCREEN_POS_X,
             INITIAL_PLAYER_ONSCREEN_POS_Y,
+            true
         ))?
         .with(movement_component)?
         .with(InputComponent::new())?

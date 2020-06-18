@@ -29,7 +29,7 @@ from typing import List, Tuple
 from PIL import Image
 
 # Directory containing sprites to be processed
-SPRITES_IN_DIR = "Mindustry/core/assets-raw/sprites/"
+SPRITES_IN_DIRS = ["Mindustry/core/assets-raw/sprites/", "assets"]
 # Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need
 SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
@@ -46,12 +46,12 @@ TTF_FONT_PATH = "Px437_IBM_BIOS.ttf"
 def get_sprite_paths() -> List[str]:
     # Paths to sprites
     sprite_paths: List[str] = list()
-
-    for root, dirs, files in os.walk(SPRITES_IN_DIR, topdown=True):
-        dirs[:] = [d for d in dirs if d not in SPRITES_IGNORE_SUBDIRS]
-        for name in files:
-            if name.endswith(".png"):
-                sprite_paths.append(os.path.join(root, name))
+    for top_root in SPRITES_IN_DIRS:
+        for root, dirs, files in os.walk(top_root, topdown=True):
+            dirs[:] = [d for d in dirs if d not in SPRITES_IGNORE_SUBDIRS]
+            for name in files:
+                if name.endswith(".png"):
+                    sprite_paths.append(os.path.join(root, name))
     return sprite_paths
 
 
@@ -63,7 +63,7 @@ def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
         # Check whether path is child path of dir that requires resizing
         for subdir_to_resize in SPRITES_RESIZE_SUBDIRS:
             if os.path.realpath(path).startswith(
-                os.path.realpath(os.path.join(SPRITES_IN_DIR, subdir_to_resize))
+                os.path.realpath(os.path.join(SPRITES_IN_DIRS[0], subdir_to_resize))
             ):
                 out_path: str = os.path.join(resized_sprite_dir, path)
                 pathlib.Path(os.path.dirname(out_path)).mkdir(
@@ -282,10 +282,7 @@ def convert_maps():
         width = width // 32
         height = height // 32
         map_entry: MapEntry = MapEntry(
-            width=width,
-            height=height,
-            name=metadata[i][2],
-            chunks=map_chunks,
+            width=width, height=height, name=metadata[i][2], chunks=map_chunks,
         )
         maps.maps.append(map_entry)
 

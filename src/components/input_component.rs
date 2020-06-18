@@ -1,5 +1,6 @@
 /// This component contains the player input relevant to an entity.
 /// Velocity is given in pixels per tick.
+#[derive(Clone)]
 pub struct InputComponent {
     pub left_pressed: bool,
     pub right_pressed: bool,

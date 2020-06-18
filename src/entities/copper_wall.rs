@@ -17,6 +17,7 @@ pub(crate) fn add_copper_wall(
             HWSpriteSize::SixteenBySixteen,
             32,
             32,
+            true,
         ))?
         .with(PositionComponent::with_pos((
             Coordinate::from_num(32),
