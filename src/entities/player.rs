@@ -8,8 +8,8 @@ use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
 
 /// Middle of the screen should be middle of sprite as well
-const INITIAL_PLAYER_ONSCREEN_POS_X: u16 = (SCREEN_WIDTH / 2 - 32 / 2) as u16;
-const INITIAL_PLAYER_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2 - 32 / 2) as u16;
+pub const INITIAL_PLAYER_ONSCREEN_POS_X: u16 = (SCREEN_WIDTH / 2 - 32 / 2) as u16;
+pub const INITIAL_PLAYER_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2 - 32 / 2) as u16;
 const PLAYER_INVENTORY_CAPACITY: usize = 64;
 /// Adds a player to the ECS.
 /// The player accepts user input and the camera stays centered on it's sprite.
@@ -28,7 +28,7 @@ pub(crate) fn add_player(
             HWSpriteSize::ThirtyTwoByThirtyTwo,
             INITIAL_PLAYER_ONSCREEN_POS_X,
             INITIAL_PLAYER_ONSCREEN_POS_Y,
-            true
+            true,
         ))?
         .with(movement_component)?
         .with(InputComponent::new())?
