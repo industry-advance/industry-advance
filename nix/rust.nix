@@ -4,9 +4,9 @@ let
   pkgs =
     import sources.nixpkgs { overlays = [ (import sources.nixpkgs-mozilla) ]; };
   channel = "nightly";
-  date = "2020-05-01";
+  date = "2020-06-18";
   targets = [ ];
-  extensions = [ "rust-src" "rls-preview" "rust-analysis" "rustfmt-preview" "clippy-preview" "miri-preview" ];
+  extensions = [ "rust-src" "clippy-preview" ];
   rustChannelOfTargetsAndExtensions = channel: date: targets: extensions:
     (pkgs.rustChannelOf { inherit channel date; }).rust.override {
       inherit targets extensions;

@@ -13,7 +13,6 @@ in {
 
     # Build tooling
     nixpkgs.cargo-make
-    nixpkgs.cargo-xbuild
     nixpkgs.gcc-arm-embedded
     nixpkgs.cacert
     nixpkgs.clippy
