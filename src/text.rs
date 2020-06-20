@@ -40,23 +40,16 @@ pub struct TextEngine {
 }
 
 impl TextEngine {
-    /// Initializes a text engine with the default font from GBFS.
-    /// The filename must be "font", and a UTF8 file "font_chars.txt" must also exist,
-    /// containing all characters in order of appearance in the tile file.
-    /// The file is assumed to contain the font in a 4bpp format, where each tile is exactly
-    /// 1 character.
-    /// No more than 512 glyphs are permitted.
-    pub fn with_default_font() -> TextEngine {
-        debug_log!(Text, "Initializing text engine");
-        let font_data_filename = Filename::try_from_str("fontTiles").unwrap();
+    fn init(font_tile_filename: &str, font_chars_filename: &str, screenblock: u16) -> TextEngine {
+        let font_tile_filename = Filename::try_from_str(font_tile_filename).unwrap();
         let font_tiles = FS
-            .get_file_data_by_name_as_u32_slice(font_data_filename)
+            .get_file_data_by_name_as_u32_slice(font_tile_filename)
             .unwrap();
 
         // Create character -> tile number lookup table
-        // TODO: Make this more efficient, both in terms of memory for the mapping and CPU time (maybe use hashmap)
+        // TODO: Make this more efficient, both in terms of memory for the mapping and CPU time (maybe use some const map)
         let mut hashmap: HashMap<char, u16, BuildHasherDefault<XxHash64>> = Default::default();
-        let font_chars_filename = Filename::try_from_str("font_chars.txt").unwrap();
+        let font_chars_filename = Filename::try_from_str(font_chars_filename).unwrap();
         let font_chars = FS.get_file_data_by_name(font_chars_filename).unwrap();
         let font_chars: &str = str::from_utf8(font_chars).unwrap();
         for (i, chara) in font_chars.chars().enumerate() {
@@ -98,7 +91,7 @@ impl TextEngine {
             BackgroundControlSetting::new()
                 .with_bg_priority(0)
                 .with_char_base_block(TEXT_CHARBLOCK as u16)
-                .with_screen_base_block(TEXT_SCREENBLOCK as u16)
+                .with_screen_base_block(screenblock)
                 .with_size(BGSize::Zero)
                 .with_is_8bpp(false),
         );
@@ -107,6 +100,25 @@ impl TextEngine {
 
         debug_log!(Text, "Text engine init done");
         return engine;
+    }
+    /// Initializes a text engine with the default font from GBFS on the default text engine screenblock.
+    /// The filename must be "font", and a UTF8 file "font_chars.txt" must also exist,
+    /// containing all characters in order of appearance in the tile file.
+    /// The file is assumed to contain the font in a 4bpp format, where each tile is exactly
+    /// 1 character.
+    /// No more than 512 glyphs are permitted.
+    pub fn with_default_font_and_screenblock() -> TextEngine {
+        return TextEngine::init("fontTiles", "font_chars.txt", TEXT_SCREENBLOCK as u16);
+    }
+
+    /// Initializes a text engine with the default font from GBFS on the given screenblock.
+    /// The filename must be "font", and a UTF8 file "font_chars.txt" must also exist,
+    /// containing all characters in order of appearance in the tile file.
+    /// The file is assumed to contain the font in a 4bpp format, where each tile is exactly
+    /// 1 character.
+    /// No more than 512 glyphs are permitted.
+    pub fn with_default_font(screenblock: usize) -> TextEngine {
+        return TextEngine::init("fontTiles", "font_chars.txt", screenblock as u16);
     }
 
     /// Sets the X, Y onscreen position for the cursor on screen, in tiles.
@@ -121,7 +133,7 @@ impl TextEngine {
     /// Puts selected character at given screen position
     /// and advances cursor.
     fn put_char(&mut self, chara: char) {
-        // Look up the glyph's tile ID
+        // Look up the glyph tile ID
         let tile_id = match self.char_to_tile_id.get(&chara) {
             Some(id) => id,
             // TODO: Just print a black box instead
