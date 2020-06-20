@@ -33,15 +33,19 @@ impl MovementComponent {
         };
     }
 
-    /// Resets the wholes part of the pending movement delta and returns it.
+    /// Resets the wholes part of the pending movement delta.
     /// The fractional part stays the same.
     ///
     /// For example, if the current pending X movement delta is 1.2, we subtract 1 and return it, and 0.2 remains.
-    pub fn reset_pending_movement_delta(&mut self) -> (i32, i32) {
-        let int_x = self.pending_movement_delta_x.int();
-        let int_y = self.pending_movement_delta_y.int();
+    pub fn reset_pending_movement_delta(&mut self) {
         self.pending_movement_delta_x = self.pending_movement_delta_x.frac();
         self.pending_movement_delta_y = self.pending_movement_delta_y.frac();
+    }
+
+    /// Returns the wholes part of the pending movement delta.
+    pub fn get_pending_movement_delta(&self) -> (i32, i32) {
+        let int_x = self.pending_movement_delta_x.int();
+        let int_y = self.pending_movement_delta_y.int();
         return (int_x.to_num(), int_y.to_num());
     }
 }

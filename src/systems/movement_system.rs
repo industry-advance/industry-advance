@@ -38,11 +38,9 @@ impl MovementSystem {
         let mut sprites = ecs.borrow_mut::<SpriteComponent>().unwrap();
         for id in live_entities {
             let id = *id;
-            // Process position updates caused by input
-            if ecs.entity_contains::<MovementComponent>(id)
-                && ecs.entity_contains::<InputComponent>(id)
-            {
+            if ecs.entity_contains::<MovementComponent>(id) {
                 let e_movement: &mut MovementComponent = movables.get_mut(id).unwrap();
+                // Process position updates caused by input
                 if ecs.entity_contains::<InputComponent>(id) {
                     let e_input: &InputComponent = inputables.get(id).unwrap();
                     update_movement_based_on_input(e_input, e_movement);
@@ -50,39 +48,45 @@ impl MovementSystem {
 
                 // Process updates to entity positions
                 if ecs.entity_contains::<PositionComponent>(id) {
-                    // FIXME: Player should only change position when scroll allows them to
                     let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
-                    update_position_based_on_movement(e_movement, e_position);
-                }
 
-                // Process updates to entity sprites caused by position change
-                if ecs.entity_contains::<PositionComponent>(id)
-                    && ecs.entity_contains::<SpriteComponent>(id)
-                {}
+                    // Entities which the camera is centered on are only allowed to move if it
+                    // wouldn't cause the rendered background area to go OOB
+                    let mut entity_moved: bool = true;
+                    if e_movement.keep_camera_centered_on
+                        && (e_movement.pending_movement_delta_x != ZERO_VELOCITY
+                            || e_movement.pending_movement_delta_y != ZERO_VELOCITY)
+                    {
+                        let (map_delta_x, map_delta_y) = e_movement.get_pending_movement_delta();
+                        if map.can_scroll(map_delta_x, map_delta_y) {
+                            map.try_scroll(map_delta_x, map_delta_y);
+                        } else {
+                            entity_moved = false;
+                        }
+                    }
+                    if entity_moved {
+                        update_position_based_on_movement(e_movement, e_position);
+                    }
 
-                // Process scrolling the map around entities which the camera's centered on
-                if e_movement.keep_camera_centered_on
-                    && e_movement.pending_movement_delta_x != ZERO_VELOCITY
-                    || e_movement.pending_movement_delta_y != ZERO_VELOCITY
-                {
-                    // Subtract the number of whole pixels we can scroll from the accumulated movement
-                    let (map_delta_x, map_delta_y) = e_movement.reset_pending_movement_delta();
-                    // Map scrolling happens in the opposite direction to where the player's moving
-                    map.try_scroll(map_delta_x, map_delta_y);
-                    // We also have to scroll all other sprites along with the map
+                    // Get rid of processed movement delta
+                    e_movement.reset_pending_movement_delta();
                 }
-
-                // Get rid of any excess movement delta
-                e_movement.reset_pending_movement_delta();
-            } else {
-                // Process updating the sprite position on screen
-                if ecs.entity_contains::<PositionComponent>(id)
-                    && ecs.entity_contains::<SpriteComponent>(id)
-                {
-                    let e_sprite: &mut SpriteComponent = sprites.get_mut(id).unwrap();
-                    let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
-                    update_sprite_based_on_position(map, e_position, e_sprite);
+            }
+            // Process updates to entity sprites caused by position change
+            if ecs.entity_contains::<SpriteComponent>(id)
+                && ecs.entity_contains::<PositionComponent>(id)
+            {
+                // Do not move sprites that the camera is centered on
+                if ecs.entity_contains::<MovementComponent>(id) {
+                    let e_movement: &mut MovementComponent = movables.get_mut(id).unwrap();
+                    if e_movement.keep_camera_centered_on {
+                        // Skip this entity
+                        continue;
+                    }
                 }
+                let e_sprite: &mut SpriteComponent = sprites.get_mut(id).unwrap();
+                let e_position: &mut PositionComponent = positionables.get_mut(id).unwrap();
+                update_sprite_based_on_position(map, e_position, e_sprite);
             }
         }
         return Ok(());

@@ -75,6 +75,15 @@ impl Map {
     /// If scrolling would make an out-of-bounds area visible, the scroll is not performed
     /// and false is returned.
     pub fn try_scroll(&mut self, x: i32, y: i32) -> bool {
+        if self.can_scroll(x, y) {
+            self.bg.scroll(x, y);
+            return true;
+        }
+        return false;
+    }
+
+    /// Report whether the map can be scrolled by xy pixels without going OOB.
+    pub fn can_scroll(&self, x: i32, y: i32) -> bool {
         // Optimization: No point in checking anything if no movement occurs
         if x != 0 || y != 0 {
             // Bounds check: Both corners must have positive coords after scroll
@@ -83,14 +92,10 @@ impl Map {
             let curr_y = curr_y as i32;
             let curr_bottom_right_x = curr_x + SCREEN_WIDTH as i32;
             let curr_bottom_right_y = curr_y + SCREEN_HEIGHT as i32;
-            if curr_x + x < 0
+            return !(curr_x + x < 0
                 || curr_y + y < 0
                 || curr_bottom_right_x as i32 + x < 0
-                || curr_bottom_right_y as i32 + y < 0
-            {
-                return false;
-            }
-            self.bg.scroll(x, y);
+                || curr_bottom_right_y as i32 + y < 0);
         }
         return true;
     }
