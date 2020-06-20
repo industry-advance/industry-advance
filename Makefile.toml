@@ -34,6 +34,11 @@ dependencies = ["assemble"]
 command = "cargo"
 args = ["test", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
 
+[tasks.clippy]
+dependencies = ["assemble"]
+command = "cargo"
+args = ["clippy", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
+
 [tasks.run]
 dependencies = ["build", "pack-rom"]
 command = "mgba"
@@ -62,3 +67,8 @@ args = ["--log-level=2047", "./target/thumbv4-none-agb/debug/industry-advance", 
 dependencies = ["build-debug"]
 command = "/usr/bin/mgba-qt"
 args = ["--log-level=2047", "./target/thumbv4-none-agb/debug/industry-advance"]
+
+[tasks.docs]
+dependencies = ["assemble"]
+command = "cargo"
+args = ["doc", "--open", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
