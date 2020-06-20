@@ -1,6 +1,6 @@
 mod container;
 mod copper_wall;
-mod cursor;
+pub mod cursor;
 mod mechanical_drill;
 pub mod player;
 pub(crate) use container::add_container;
