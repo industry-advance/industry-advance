@@ -10,19 +10,7 @@ let
     nixpkgs.python37Packages.mypy
     nixpkgs.python37Packages.ipython
 
-    # Reference implementation
-    nixpkgs.mindustry
-    # Mindustry build deps
-    nixpkgs.jre
-    nixpkgs.gradle_5
-    nixpkgs.perl
-
-    # For testing github actions locally
-    nixpkgs.act
-
     # Debugging
     nixpkgs.gdb-multitarget
-    nixpkgs.lldb_9
-    nixpkgs.xawtv # We use the RIFF file viewer
   ];
 in nixpkgs.mkShell { buildInputs = shellPackages; }
