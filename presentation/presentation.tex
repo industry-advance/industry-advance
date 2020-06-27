@@ -1,0 +1,143 @@
+\documentclass{beamer}
+
+\usepackage[utf8]{inputenc}
+
+
+\title{Industry Advance}
+\author{Davids Paskevics, Phillip Wellner, TODO}
+\institute{FU Berlin}
+\date{2020}
+
+
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{The project}
+\begin{itemize}
+	\item Game for the GBA console
+    \item Port/clone of the libre Java game \emph{Mindustry}
+    \item Mashup of logistics sim/tower defense
+    \item Wave-based gameplay good fit for portable gaming
+    \item TODO: Mindustry screenshot
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{The hardware}
+\begin{itemize}
+    \item Handheld game console by Nintendo
+	\item JP release in 2000
+	\item Engineered for cost and battery life \begin{itemize}
+		\item 32 bit ARMv4t ISA processor
+		\item Clock @16MHz
+		\item No cache
+		\item 32KiB fast (on-die) RAM, 256Kib slow (off-die) RAM $\xrightarrow[]{}$ We put stack here
+		\item "slow RAM" = narrow bus + wait cycles $\xrightarrow[]{}$ We put heap here
+		\item Generous up to 32MiB cart ROM
+		\item Nintendo wanted to make the "ultimate 2D handheld" $\xrightarrow[]{}$ no HW 3D support or FPU
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Prior art}
+\begin{itemize}
+	\item ISA supported in \emph{LLVM} (and therefore \emph{rustc})
+	\item Cross-compiling \emph{libcore} easy thanks to \emph{build-std} cargo feature
+	\item Amazing rust-console/gba crate provides basic HAL
+	\item Snake game from around 2015, but no "complex" games written in Rust to our knowledge
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Starting out}
+\begin{itemize}
+	\item "Hello world" is tricky on this hardware
+	\item Easier to draw something
+	\item Shouldn't be hard, right?
+	\item Until you want to draw something useful for a game, that is
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Graphics on the GBA}
+\begin{itemize}
+	\item Modern consoles/PCs are powerful enough to allow uploading pixels to the display freely
+	\item GBA has such "bitmap" modes as well (slow!)
+	\item Also supports HW accelerated "tile modes" (fast!)
+	TODO: Insert graphic on how tiles/sprites work
+	\item Custom GFX format, needs a converter (and an ugly python wrapper)
+	
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Rust ecosystem}
+\begin{itemize}
+	\item Use of easily integrated \emph{no\_std} crates
+    \begin{itemize}
+    	\item \emph{serde} for map metadata loading
+    	\item \emph{tiny\_ecs} for ECS (good pattern for structuring games in Rust)
+    	\item \emph{hashbrown} for hashmap
+    	\item \emph{fixed} for fixed-point maths (fast!)
+    \end{itemize}
+	\item Crates reduced dev time by a lot
+	\item Downside: Some libs assume stuff (atomics support)
+	\item Downside: Others are needlessly \emph{std}-dependent (patches)
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Rust APIs}
+\begin{itemize}
+	\item Tile-based custom text output w/ formatting in <50 LOC thanks to \emph{Write} trait
+	\item Custom test framework w/ minimal boilerplate
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Rust safety}
+\begin{itemize}
+	\item Only hit memory bugs in our \emph{unsafe} allocator
+	\item Saves us a lot of time (which we need to squash logic bugs instead)
+	\item \emph{clippy} could be better at reporting alignment issues
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Rust speed}
+\begin{itemize}
+	\item No CPU bottleneck yet, despite many abstractions
+	\item Code isn't very optimized yet
+    \item \emph{const\_fn} allowed for a low-cost FS implementation
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{We didn't finish}
+\begin{itemize}
+	\item Picked a project too ambitious in scope
+	\item Underestimated engine dev effort \begin{itemize}
+		\item The HW is not designed for this kind of game
+		\item Still not sure how we'll implement saving, multiplayer, etc.
+	\end{itemize}
+	\item This is not a 5h/week job
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Conclusion}
+\begin{itemize}
+    \item I believe Rust is a good fit (but I'm biased)
+	\item Will develop project further
+	\item Interested? Fork us on github: https://github.com/industry-advance/industry-advance (take a look under "Projects"!)
+\end{itemize}
+\end{frame}
+
+
+
+\end{document}
