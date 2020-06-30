@@ -140,8 +140,6 @@ pub struct MapChunk {
 
 impl Maps {
     const MAPS_PATH: &'static str = "maps.json";
-    const MAPS_SHARED_PAL: &'static str = "map_sharedPal";
-    const MAPS_SHARED_TILES: &'static str = "map_sharedTiles";
 
     /// Reads from the default map description file.
     pub fn read_map_data() -> Maps {
@@ -164,15 +162,17 @@ impl MapEntry {
             )
         }
 
+        // FIXME: Grit truncates filenames if they're too long for GBFS.
+        // Figure out how the truncation algo works and reverse it here.
         let pal: &'static [u16] = FS
             .get_file_data_by_name_as_u16_slice(
-                Filename::try_from_str(Maps::MAPS_SHARED_PAL).unwrap(),
+                Filename::try_from_str(format!("map_{}_sharedPal", self.name)).unwrap(),
             )
             .unwrap();
 
         let tiles: &'static [u32] = FS
             .get_file_data_by_name_as_u32_slice(
-                Filename::try_from_str(Maps::MAPS_SHARED_TILES).unwrap(),
+                Filename::try_from_str(format!("map_{}_sharedTiles", self.name)).unwrap(),
             )
             .unwrap();
 

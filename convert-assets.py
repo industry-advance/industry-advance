@@ -16,10 +16,13 @@ import preparefont
 # This module converts Mindustry's maps to a more suitable format
 import parse_save
 
+# This module makes it easier to deal with the GBFS format, with tooling that is
+# surprisingly crippled given the format's simplicity.
+import gbfs_utils
+
 import os
 import pathlib
 import subprocess
-import shutil
 import tempfile
 
 from dataclasses import dataclass
@@ -41,6 +44,11 @@ MAPS_IN_DIR = "Mindustry/core/assets/maps/"
 
 # Path to font which should be included
 TTF_FONT_PATH = "Px437_IBM_BIOS.ttf"
+# Path to final archive
+OUT_PATH = "assets.gbfs"
+# Path to intermediate archives, needed because grit (and the GBFS CLI tools) are too stupid to
+# append stuff.
+OUT_PATH_TMP = "tmp-assets.gbfs"
 
 
 def get_sprite_paths() -> List[str]:
@@ -115,29 +123,6 @@ def convert_sprites(sprite_paths: List[str]):
     )
 
 
-def insert_into_gbfs(gbfs_path: str, file_path: str):
-    """
-    Insert a file into the given, preexisting GBFS archive.
-    """
-    # The GBFS distribution provides no tooling for appending files to an archive,
-    # so we have to extract and repack instead.
-    temp_dir: str = tempfile.TemporaryDirectory().name
-    pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
-    old_workdir = os.getcwd()
-    absolute_gbfs_path = os.path.abspath(gbfs_path)
-    absolute_file_path = os.path.abspath(file_path)
-    os.chdir(temp_dir)
-    subprocess.run(check=True, args=["ungbfs", absolute_gbfs_path])
-    shutil.copy2(absolute_file_path, temp_dir)
-    # Pack back up
-    all_files = os.listdir(temp_dir)
-    # Have to do this in 2 steps, or we get "Invalid cross-device link"
-    subprocess.run(check=True, args=["gbfs", "temp.gbfs"] + all_files)
-    shutil.copy2("temp.gbfs", absolute_gbfs_path)
-
-    os.chdir(old_workdir)
-
-
 def convert_fonts():
     temp_dir: str = tempfile.TemporaryDirectory().name
     pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
@@ -146,7 +131,7 @@ def convert_fonts():
     preparefont.convert_ttf_font(TTF_FONT_PATH, char_file, img_file)
     # Insert character list into FS (they're ordered in the same order as in the img)
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
-    subprocess.run(check=True, args=["gbfs", "assets.gbfs", char_file])
+    subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
     # Run grit to actually convert glyphs
     subprocess.run(
         "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
@@ -192,19 +177,41 @@ def pad_maps(map_paths: List[str]) -> List[str]:
     return new_paths
 
 
-def convert_maps_via_grit(map_paths: List[str]):
-    all_map_paths: str = ""
-    for map_path in map_paths:
-        all_map_paths = all_map_paths + " " + map_path
+def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
+    """
+    Takes a whole bunch of maps as lists of their 32x32 fragments and converts to GBA format.
+    """
 
-    # Run grit
-    subprocess.run(
-        "grit {} -ftg -fh! -fa -gT -gS -pS -m -oassets -Oassets -S map_shared -gB4".format(
-            all_map_paths
-        ),
-        shell=True,
-        check=True,
-    )
+    def convert_single_map_via_grit(map_name: str, map_fragment_paths: List[str]):
+        """
+        Takes an array of 32x32 tile slices of a map, and converts them to GBA format.
+        WARNING: Do not use on more than 1 map at once, or your colors will be messed up
+        due to limited palette size.
+        """
+
+        # Grit expects paths as a long list of strings
+        all_fragment_paths: str = ""
+        for fragment_path in map_fragment_paths:
+            all_fragment_paths = all_fragment_paths + " " + fragment_path
+
+        print(
+            "Packing map named {} with fragments {}".format(
+                map_name, all_fragment_paths
+            )
+        )
+        # Because grit is too stupid to append, we need to let it generate a new assets archive
+        # then unpack ours and add stuff to it by copying from grit's archive.
+        # Run grit
+        subprocess.run(
+            "grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
+                all_fragment_paths, OUT_PATH, OUT_PATH, map_name
+            ),
+            shell=True,
+            check=True,
+        )
+
+    for (map_name, fragmented_map) in map_paths:
+        convert_single_map_via_grit(map_name, fragmented_map)
 
 
 def convert_mindustry_maps_to_png(
@@ -262,10 +269,11 @@ def convert_maps():
     map_paths = get_map_paths()
     (map_png_paths, metadata) = convert_mindustry_maps_to_png(map_paths)
     padded_map_png_paths = pad_maps(map_png_paths)
-    split_map_png_paths = list()
+    split_map_png_paths: List[Tuple[str, List[str]]] = list()
     for i, map_png in enumerate(padded_map_png_paths):
         split_map_paths = split_maps_into_chunks([map_png])
-        split_map_png_paths.extend(split_map_paths)
+        map_name = metadata[i][2]
+        split_map_png_paths.append((map_name, split_map_paths))
 
         map_chunks: List[MapChunk] = list()
         # We assume a particular grit naming scheme here
@@ -292,7 +300,7 @@ def convert_maps():
     with open("maps.json", "w") as f:
         print(maps.to_json())
         f.write(maps.to_json())
-    insert_into_gbfs("assets.gbfs", "maps.json")
+    gbfs_utils.insert(OUT_PATH, "maps.json")
 
 
 def main():
