@@ -1,12 +1,15 @@
 use crate::components::{
-    component_utils::*, InputComponent, MovementComponent, PositionComponent, SpriteComponent,
+    component_utils::*, BuilderComponent, InputComponent, MovementComponent, PositionComponent,
+    SpriteComponent,
 };
 use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
 use crate::sprite::HWSpriteAllocator;
-use crate::systems::{item_movement_system, mining_system, InputSystem, MovementSystem};
+use crate::systems::{
+    building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
+};
 use crate::text::TextEngine;
 
 use crate::FS;
@@ -18,6 +21,13 @@ use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
+/// Data which is needed to perform game mode switches.
+#[derive(Copy, Clone, Debug)]
+struct ModePersist {
+    map_scroll_pos_x: u32,
+    map_scroll_pos_y: u32,
+}
+
 #[derive(Debug, PartialEq)]
 enum GameMode {
     // State in which the player controls the avatar directly and all game systems are ticked.
@@ -26,6 +36,7 @@ enum GameMode {
     // the rest of the game logic is paused.
     TimeStopped,
 }
+
 #[allow(dead_code)] // Some struct fields not used after construction right now, remove once changed
 pub(crate) struct Game {
     sprite_alloc: HWSpriteAllocator,
@@ -37,6 +48,7 @@ pub(crate) struct Game {
     input_system: InputSystem,
     text_engine: TextEngine,
     game_mode: GameMode,
+    mode_persist: Option<ModePersist>,
 }
 
 impl Game {
@@ -90,14 +102,6 @@ impl Game {
             .expect("Failed to initialize copper wall entity");
         live_entity_ids.push(copper_wall_id);
 
-        // Initialize a miner and deposit container for testing
-        let container_id = entities::add_container(&mut e, &mut sprite_allocator)
-            .expect("Failed to initialize container entity");
-        live_entity_ids.push(container_id);
-        let miner_id = entities::add_mechanical_drill(&mut e, &mut sprite_allocator, container_id)
-            .expect("Failed to initialize mechanical drill entity");
-        live_entity_ids.push(miner_id);
-
         // Put the player at the center of the screen
         let mut components = e.borrow_mut::<SpriteComponent>().unwrap();
         let player_sprite_handle = components.get_mut(player_id).unwrap().get_handle();
@@ -117,6 +121,7 @@ impl Game {
             input_system: InputSystem::init(),
             text_engine,
             game_mode: GameMode::TimeRunning,
+            mode_persist: None,
         };
     }
 
@@ -128,97 +133,7 @@ impl Game {
             .expect("Failed to tick input system");
         // Start is the button for switching between game modes
         if start_pressed {
-            use GameMode::*;
-            match self.game_mode {
-                // If we're in stopped mode, we want the camera to follow the cursor,
-                // and we want to take away the player's InputComponent and give it to the cursor.
-                TimeRunning => {
-                    self.game_mode = GameMode::TimeStopped;
-                    // Move the movement component to the cursor
-                    move_component::<MovementComponent>(
-                        self.player_id,
-                        self.cursor_id,
-                        &mut self.entities,
-                    )
-                    .unwrap();
-
-                    // Move the input component to the cursor
-                    move_component::<InputComponent>(
-                        self.player_id,
-                        self.cursor_id,
-                        &mut self.entities,
-                    )
-                    .unwrap();
-
-                    // Copy the position component to the cursor
-                    clone_component::<PositionComponent>(
-                        self.player_id,
-                        self.cursor_id,
-                        &mut self.entities,
-                    )
-                    .unwrap();
-
-                    // Recenter cursor on the screen
-                    let mut sprite_components =
-                        self.entities.borrow_mut::<SpriteComponent>().unwrap();
-                    let mut cursor_sprite_component =
-                        sprite_components.get_mut(self.cursor_id).unwrap();
-                    let mut handle = cursor_sprite_component.get_handle();
-                    handle.set_x_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_X);
-                    handle.set_y_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_Y);
-
-                    // Cursor has to be made visible
-                    let mut cursor_sprite_component =
-                        sprite_components.get_mut(self.cursor_id).unwrap();
-                    let mut handle = cursor_sprite_component.get_handle();
-                    handle.set_visibility(true);
-                }
-                TimeStopped => {
-                    self.game_mode = GameMode::TimeRunning;
-
-                    // Move the input component back to the player
-                    move_component::<InputComponent>(
-                        self.cursor_id,
-                        self.player_id,
-                        &mut self.entities,
-                    )
-                    .unwrap();
-
-                    // We don't want the player teleporting to the cursor's position,
-                    // therefore we don't copy the PositionComponent back.
-                    self.entities
-                        .rm_component::<PositionComponent>(self.cursor_id)
-                        .unwrap();
-                    // We also don't want the camera to follow the cursor anymore, either.
-                    self.entities
-                        .rm_component::<MovementComponent>(self.cursor_id)
-                        .unwrap();
-
-                    // Recenter player on the screen
-                    let mut sprite_components =
-                        self.entities.borrow_mut::<SpriteComponent>().unwrap();
-                    let mut player_sprite_component =
-                        sprite_components.get_mut(self.cursor_id).unwrap();
-                    let mut handle = player_sprite_component.get_handle();
-                    handle.set_x_pos(player::INITIAL_PLAYER_ONSCREEN_POS_X);
-                    handle.set_y_pos(player::INITIAL_PLAYER_ONSCREEN_POS_Y);
-
-                    // Cursor has to be made invisible again
-                    let mut cursor_sprite_component =
-                        sprite_components.get_mut(self.cursor_id).unwrap();
-                    let mut handle = cursor_sprite_component.get_handle();
-                    handle.set_visibility(false);
-                    drop(sprite_components);
-
-                    // Make camera follow the player again
-                    let mut player_movement = MovementComponent::new();
-                    player_movement.input_controlled = true;
-                    player_movement.keep_camera_centered_on = true;
-                    self.entities
-                        .add_component(self.player_id, player_movement)
-                        .unwrap();
-                }
-            }
+            self.toggle_game_mode();
         }
 
         // Simulate all game systems
@@ -227,17 +142,131 @@ impl Game {
             MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
                 .expect("Failed to tick movement system");
 
-            // Update display
-
             // Update miners
             mining_system::tick(&mut self.entities, &self.live_entity_ids);
 
             // Perform inventory transfers
             item_movement_system::tick(&mut self.entities);
+
         // Only simulate systems needed for moving the cursor and building
         } else {
             MovementSystem::tick(&mut self.entities, &self.live_entity_ids, &mut self.map)
                 .expect("Failed to tick movement system");
+            building_system::tick(
+                &mut self.entities,
+                &mut self.live_entity_ids,
+                &mut self.sprite_alloc,
+            );
+        }
+    }
+
+    /// Switch between game modes.
+    fn toggle_game_mode(&mut self) {
+        use GameMode::*;
+        match self.game_mode {
+            // If we're in stopped mode, we want the camera to follow the cursor,
+            // and we want to take away the player's InputComponent and give it to the cursor.
+            TimeRunning => {
+                self.game_mode = GameMode::TimeStopped;
+                // Move the movement component to the cursor
+                move_component::<MovementComponent>(
+                    self.player_id,
+                    self.cursor_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
+                // Move the input component to the cursor
+                move_component::<InputComponent>(
+                    self.player_id,
+                    self.cursor_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
+                // Copy the position component to the cursor
+                clone_component::<PositionComponent>(
+                    self.player_id,
+                    self.cursor_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
+                // We want to restore the map view to the player's position
+                // once cursor mode is left. Therefore, we have to store the current position of the map.
+                let (map_scroll_pos_x, map_scroll_pos_y) = self.map.get_top_left_corner_coords();
+
+                self.mode_persist = Some(ModePersist {
+                    map_scroll_pos_x,
+                    map_scroll_pos_y,
+                });
+
+                // The cursor is unique in that it can build.
+                self.entities
+                    .add_component(self.cursor_id, BuilderComponent::new());
+
+                // Recenter cursor on the screen
+                let mut sprite_components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
+                let mut cursor_sprite_component =
+                    sprite_components.get_mut(self.cursor_id).unwrap();
+                let mut handle = cursor_sprite_component.get_handle();
+                handle.set_x_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_X);
+                handle.set_y_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_Y);
+
+                // Cursor has to be made visible
+                let mut cursor_sprite_component =
+                    sprite_components.get_mut(self.cursor_id).unwrap();
+                let mut handle = cursor_sprite_component.get_handle();
+                handle.set_visibility(true);
+            }
+            TimeStopped => {
+                self.game_mode = GameMode::TimeRunning;
+
+                // Move the input component back to the player
+                move_component::<InputComponent>(
+                    self.cursor_id,
+                    self.player_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
+                // We don't want the player teleporting to the cursor's position,
+                // therefore we don't copy the PositionComponent back.
+                self.entities
+                    .rm_component::<PositionComponent>(self.cursor_id)
+                    .unwrap();
+                // We also don't want the camera to follow the cursor anymore, either.
+                self.entities
+                    .rm_component::<MovementComponent>(self.cursor_id)
+                    .unwrap();
+
+                // Recenter player on the screen
+                let mut sprite_components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
+                let mut player_sprite_component =
+                    sprite_components.get_mut(self.cursor_id).unwrap();
+                let mut handle = player_sprite_component.get_handle();
+                handle.set_x_pos(player::INITIAL_PLAYER_ONSCREEN_POS_X);
+                handle.set_y_pos(player::INITIAL_PLAYER_ONSCREEN_POS_Y);
+
+                // Scroll map back to the player's position
+                let mode_persist = self.mode_persist.unwrap();
+                self.map
+                    .scroll_abs(mode_persist.map_scroll_pos_x, mode_persist.map_scroll_pos_y);
+                // Cursor has to be made invisible again
+                let mut cursor_sprite_component =
+                    sprite_components.get_mut(self.cursor_id).unwrap();
+                let mut handle = cursor_sprite_component.get_handle();
+                handle.set_visibility(false);
+                drop(sprite_components);
+
+                // Make camera follow the player again
+                let mut player_movement = MovementComponent::new();
+                player_movement.input_controlled = true;
+                player_movement.keep_camera_centered_on = true;
+                self.entities
+                    .add_component(self.player_id, player_movement)
+                    .unwrap();
+            }
         }
     }
 }

@@ -196,6 +196,19 @@ impl LargeBackground {
             && (top_left_y <= bottom_right_screen_y);
     }
 
+    /// Scroll the large background to an absolute position.
+    pub fn scroll_abs(&mut self, x_pos: u32, y_pos: u32) {
+        // New coords of the top-left screen corner
+        self.curr_x = x_pos;
+        self.curr_y = y_pos;
+        // Load new backing tilemaps if needed
+        self.ensure_correct_backing_tilemaps_are_loaded();
+
+        // Perform actual hardware scroll
+        background::BG0HOFS.write(self.curr_x.try_into().unwrap());
+        background::BG0VOFS.write(self.curr_y.try_into().unwrap());
+    }
+
     /// Scroll the large background by xy pixels.
     /// If the indices are positive, scrolling happens down/to the right, if negative up/to the left.
     /// Parts of the map are dynamically loaded and no longer visible parts vacated.

@@ -42,7 +42,7 @@ enum SpriteBlockState {
 /// this struct is UB.
 ///
 /// Using more than one HWSpriteAllocator is also UB.
-pub(crate) struct HWSpriteAllocator {
+pub struct HWSpriteAllocator {
     /// List of 32 byte regions in object VRAM (1 tile per region),
     /// as well as how many OAM sprites use that particular tile.
     allocation_map: Box<[(u16, SpriteBlockState); 1024]>,
@@ -116,6 +116,8 @@ impl HWSpriteAllocator {
     /// This will panic if insufficient space is available or too many sprites are already active.
     pub fn alloc(&mut self, sprite_data: &[u32], sprite_size: HWSpriteSize) -> HWSpriteHandle {
         // Check whether the sprite is already in VRAM by comparing it's hash
+        // FIXME: I think we don't correctly understand the Hasher interface, as identical
+        // sprites return different hashes. Maybe using by_address is part of the solution.
         sprite_data.hash(&mut self.hasher);
         let sprite_hash = self.hasher.finish();
         let starting_vram_tile_id: usize;
@@ -295,7 +297,7 @@ impl HWSpriteAllocator {
 /// A handle to a hardware sprite allocated in VRAM/OAM.
 /// Also provides some wrappers to avoid the tedium of having to get an object, modify it, and write it back
 /// for commonly used object attributes.
-pub(crate) struct HWSpriteHandle {
+pub struct HWSpriteHandle {
     pub sprite_size: HWSpriteSize,
     starting_block: usize,
     data_hash: u64,

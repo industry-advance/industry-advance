@@ -71,7 +71,12 @@ impl Map {
         return self.bg.get_top_left_corner_coords();
     }
 
-    /// Scroll the map by xy pixels.
+    /// Scroll the map to an absolute position.
+    pub fn scroll_abs(&mut self, x_pos: u32, y_pos: u32) {
+        self.bg.scroll_abs(x_pos, y_pos);
+    }
+
+    /// Scroll the map by xy pixels (relative to current position).
     /// If scrolling would make an out-of-bounds area visible, the scroll is not performed
     /// and false is returned.
     pub fn try_scroll(&mut self, x: i32, y: i32) -> bool {
