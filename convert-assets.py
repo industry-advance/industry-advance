@@ -38,6 +38,8 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
+CURRENTLY_USED_SPRITES: List[str] = ["containerTiles.png", "copper-wall.png", "cursor.png", "dart-ship.png", "mechanical-drill.png"]
+
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
 MAPS_IN_DIR = "Mindustry/core/assets/maps/"
@@ -58,8 +60,11 @@ def get_sprite_paths() -> List[str]:
         for root, dirs, files in os.walk(top_root, topdown=True):
             dirs[:] = [d for d in dirs if d not in SPRITES_IGNORE_SUBDIRS]
             for name in files:
-                if name.endswith(".png"):
+                if name.endswith(".png") and name in CURRENTLY_USED_SPRITES:
                     sprite_paths.append(os.path.join(root, name))
+                else:
+                    print("Not used: " + name)
+    print(sprite_paths)
     return sprite_paths
 
 

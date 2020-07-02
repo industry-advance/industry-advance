@@ -111,6 +111,8 @@ impl Game {
         // Initialize the text engine
         let text_engine = TextEngine::with_default_font_and_screenblock();
 
+        debug_log!(Subsystems::Game, "Init done. Starting game loop");
+
         return Game {
             sprite_alloc: sprite_allocator,
             map,
