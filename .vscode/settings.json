@@ -1,5 +1,12 @@
 {
     "nixEnvSelector.nixShellConfig": "${workspaceRoot}/shell.nix",
-    "rust.sysroot": "target/sysroot",
-    "rust.target": "thumbv4-none-agb"
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.cargo.target": "thumbv4-none-agb",
+    "rust-analyzer.cargo.allFeatures": true,
+    "rust-analyzer.withSysroot": false,
+    "rust-analyzer.checkOnSave.extraArgs": [
+        "-Z",
+        "build-std=core,alloc"
+    ],
+    "rust-analyzer.checkOnSave.command": "clippy",
 }
