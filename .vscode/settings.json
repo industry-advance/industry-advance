@@ -2,8 +2,6 @@
     "nixEnvSelector.nixShellConfig": "${workspaceRoot}/shell.nix",
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.target": "thumbv4-none-agb",
-    "rust-analyzer.cargo.allFeatures": true,
-    "rust-analyzer.withSysroot": false,
     "rust-analyzer.checkOnSave.extraArgs": [
         "-Z",
         "build-std=core,alloc"
