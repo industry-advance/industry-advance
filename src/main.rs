@@ -12,7 +12,6 @@
 #![feature(const_in_array_repeat_expressions)]
 // Nice-to-have features
 #![feature(try_trait)]
-
 // Disable a bunch of clippy lints I disagree with
 #![allow(clippy::needless_return)]
 #![allow(clippy::module_inception)]
@@ -37,6 +36,7 @@ mod ewram_alloc;
 mod game;
 mod item;
 mod map;
+mod menu;
 mod shared_constants;
 mod shared_types;
 mod sprite;

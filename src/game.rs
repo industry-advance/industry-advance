@@ -6,6 +6,7 @@ use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
+use crate::menu::Window;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
@@ -14,8 +15,7 @@ use crate::text::TextEngine;
 
 use crate::FS;
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
+use alloc::{boxed::Box, string::String, vec::Vec};
 
 use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
@@ -75,9 +75,15 @@ impl Game {
         );
         sprite_allocator.init();
 
-        // Create a map
+        // Ask the player which map they'd like
         let maps = Maps::read_map_data();
-        let map_entry = maps.get_by_name("craters").unwrap();
+        let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
+        let mut win_menu = Window::new();
+        win_menu.show();
+        let choice_idx = win_menu.make_menu("Choose a map", &map_names);
+        drop(win_menu);
+        let map_entry = &maps.maps[choice_idx];
+        // Create a map
         debug_log!(Subsystems::Game, "Loading map {}", map_entry.name);
         let map = map_entry.get_map();
 
@@ -203,7 +209,8 @@ impl Game {
 
                 // The cursor is unique in that it can build.
                 self.entities
-                    .add_component(self.cursor_id, BuilderComponent::new());
+                    .add_component(self.cursor_id, BuilderComponent::new())
+                    .unwrap();
 
                 // Recenter cursor on the screen
                 let mut sprite_components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
