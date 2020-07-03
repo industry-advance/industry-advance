@@ -115,7 +115,7 @@ pub struct Maps {
 impl Maps {
     //! Returns a MapEntry with the given name or None.
     pub fn get_by_name(&self, name: &str) -> Option<MapEntry> {
-        let map = self.maps.iter().filter(|map| map.name == name).next();
+        let map = self.maps.iter().find(|map| map.name == name);
 
         // We have to dereference the reference inside the Option
         match map {

@@ -3,7 +3,6 @@ mod copper_wall;
 pub mod cursor;
 mod mechanical_drill;
 pub mod player;
-pub(crate) use container::add_container;
 pub(crate) use copper_wall::add_copper_wall;
 pub(crate) use cursor::add_cursor;
 pub(crate) use mechanical_drill::add_mechanical_drill;

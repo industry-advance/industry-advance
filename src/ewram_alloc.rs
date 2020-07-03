@@ -104,7 +104,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
             ((ptr as usize) - mem::size_of::<BlockAllocate>()) as *const BlockAllocate,
         );
 
-        alloc_info!("[ALLOC] Dellalloc Block with Meta {:?}", current_block);
+        alloc_info!("[ALLOC] Dealloc Block with Meta {:?}", current_block);
 
         current_block.free = true;
         ptr::write_volatile::<BlockAllocate>(
@@ -112,11 +112,7 @@ unsafe impl GlobalAlloc for MyBigAllocator {
             current_block,
         );
 
-        alloc_info!(
-            "[ALLOC] Deallocation {} Bytes at 0x{:p}",
-            layout.size(),
-            ptr
-        );
+        alloc_info!("[ALLOC] Deallocate {} bytes at 0x{:p}", layout.size(), ptr);
         merge_free_blocks(((ptr as usize) - mem::size_of::<BlockAllocate>()) as *mut BlockAllocate);
 
         let current_block2: BlockAllocate = ptr::read_volatile::<BlockAllocate>(
@@ -204,7 +200,6 @@ fn merge_free_blocks(ptr: *mut BlockAllocate) {
 fn test_allocator() {
     use alloc::boxed::Box;
     use alloc::string::String;
-    use alloc::vec::Vec;
     // Perform some small allocations and ensure that what we expect was allocated
     gba::debug!("Allocating box 1");
     let test_box: Box<u32> = Box::new(3);
@@ -227,7 +222,6 @@ fn test_allocator() {
 #[test_case]
 fn allocator_stress_test() {
     use alloc::boxed::Box;
-    use alloc::string::String;
     use alloc::vec::Vec;
     // Perform an allocator "stress test" by continuously allocating and dropping large data structures.
     let mut size_bytes: usize = 100;

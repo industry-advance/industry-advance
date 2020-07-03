@@ -1,7 +1,6 @@
-use crate::components::{InputComponent, MovementComponent, PositionComponent, SpriteComponent};
+use crate::components::SpriteComponent;
 use crate::debug_log::*;
 use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
-use crate::shared_types::Coordinate;
 use crate::sprite::{HWSpriteAllocator, HWSpriteSize};
 use tiny_ecs::{ECSError, Entities};
 

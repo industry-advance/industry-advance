@@ -22,7 +22,6 @@ pub fn tick(
             let e_builder = builders.get(id).unwrap();
             let builder = e_builder.clone();
             // Gotta make borrow checker happy here
-            drop(e_builder);
             drop(builders);
             if builder.build {
                 debug_log!(Subsystems::BuilderSystem, "Build!");

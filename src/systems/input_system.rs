@@ -73,7 +73,7 @@ impl InputSystem {
                     /* The state of the start key doesn't concern any entity directly,
                     but it does concern the game loop. Therefore, we return the value here. */
                     let start_pressed: bool;
-                    if keys.start() && self.start_held == false {
+                    if keys.start() && !self.start_held {
                         debug_log!(Subsystems::InputSystem, "Start pressed");
                         start_pressed = true;
                         self.start_held = true;

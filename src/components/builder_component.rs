@@ -1,7 +1,6 @@
 /// This component marks that the entity wishes to create a building at it's current location.
 /// Currently only places miners.
 /// TODO: Actually support building anything (blocked on UI)
-use crate::shared_types::Coordinate;
 #[derive(Clone)]
 pub struct BuilderComponent {
     pub build: bool,

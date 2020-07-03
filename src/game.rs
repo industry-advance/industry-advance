@@ -203,20 +203,19 @@ impl Game {
 
                 // The cursor is unique in that it can build.
                 self.entities
-                    .add_component(self.cursor_id, BuilderComponent::new());
+                    .add_component(self.cursor_id, BuilderComponent::new())
+                    .unwrap();
 
                 // Recenter cursor on the screen
                 let mut sprite_components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
-                let mut cursor_sprite_component =
-                    sprite_components.get_mut(self.cursor_id).unwrap();
-                let mut handle = cursor_sprite_component.get_handle();
+                let cursor_sprite_component = sprite_components.get_mut(self.cursor_id).unwrap();
+                let handle = cursor_sprite_component.get_handle();
                 handle.set_x_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_X);
                 handle.set_y_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_Y);
 
                 // Cursor has to be made visible
-                let mut cursor_sprite_component =
-                    sprite_components.get_mut(self.cursor_id).unwrap();
-                let mut handle = cursor_sprite_component.get_handle();
+                let cursor_sprite_component = sprite_components.get_mut(self.cursor_id).unwrap();
+                let handle = cursor_sprite_component.get_handle();
                 handle.set_visibility(true);
             }
             TimeStopped => {
@@ -239,12 +238,15 @@ impl Game {
                 self.entities
                     .rm_component::<MovementComponent>(self.cursor_id)
                     .unwrap();
+                // Or the cursor to be able to build
+                self.entities
+                    .rm_component::<BuilderComponent>(self.cursor_id)
+                    .unwrap();
 
                 // Recenter player on the screen
                 let mut sprite_components = self.entities.borrow_mut::<SpriteComponent>().unwrap();
-                let mut player_sprite_component =
-                    sprite_components.get_mut(self.cursor_id).unwrap();
-                let mut handle = player_sprite_component.get_handle();
+                let player_sprite_component = sprite_components.get_mut(self.cursor_id).unwrap();
+                let handle = player_sprite_component.get_handle();
                 handle.set_x_pos(player::INITIAL_PLAYER_ONSCREEN_POS_X);
                 handle.set_y_pos(player::INITIAL_PLAYER_ONSCREEN_POS_Y);
 
@@ -253,9 +255,8 @@ impl Game {
                 self.map
                     .scroll_abs(mode_persist.map_scroll_pos_x, mode_persist.map_scroll_pos_y);
                 // Cursor has to be made invisible again
-                let mut cursor_sprite_component =
-                    sprite_components.get_mut(self.cursor_id).unwrap();
-                let mut handle = cursor_sprite_component.get_handle();
+                let cursor_sprite_component = sprite_components.get_mut(self.cursor_id).unwrap();
+                let handle = cursor_sprite_component.get_handle();
                 handle.set_visibility(false);
                 drop(sprite_components);
 
