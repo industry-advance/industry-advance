@@ -17,12 +17,28 @@
 \begin{frame}
 \frametitle{The project}
 \begin{itemize}
-	\item Game for the GBA console
+	\item Game for the GBA console \begin{itemize}
+		\item Got idea @spline last year 
+	\end{itemize}
     \item Port/clone of the libre Java game \emph{Mindustry}
     \item Mashup of logistics sim/tower defense
     \item Wave-based gameplay good fit for portable gaming
-    \item TODO: Mindustry screenshot
 \end{itemize}
+\end{frame}
+
+\begin{frame}
+\includegraphics[scale=0.4]{images/mindustry.png}
+\end{frame}
+
+\begin{frame}
+\frametitle{Demo}
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{The hardware}
+\includegraphics[scale=0.28]{images/Nintendo-Game-Boy-Advance-Purple-FL.jpg}
 \end{frame}
 
 \begin{frame}
@@ -31,12 +47,13 @@
     \item Handheld game console by Nintendo
 	\item JP release in 2000
 	\item Engineered for cost and battery life \begin{itemize}
+		\item No OS, just BIOS
 		\item 32 bit ARMv4t ISA processor
 		\item Clock @16MHz
 		\item No cache
-		\item 32KiB fast (on-die) RAM, 256Kib slow (off-die) RAM $\xrightarrow[]{}$ We put stack here
-		\item "slow RAM" = narrow bus + wait cycles $\xrightarrow[]{}$ We put heap here
-		\item Generous up to 32MiB cart ROM
+		\item 32KiB fast (on-die) RAM $\xrightarrow[]{}$ We put stack here
+		\item 256Kib slow (off-die) RAM = narrow bus + wait cycles $\xrightarrow[]{}$ We put heap here
+		\item Up to 32MiB cart ROM
 		\item Nintendo wanted to make the "ultimate 2D handheld" $\xrightarrow[]{}$ no HW 3D support or FPU
 	\end{itemize}
 \end{itemize}
@@ -47,7 +64,7 @@
 \begin{itemize}
 	\item ISA supported in \emph{LLVM} (and therefore \emph{rustc})
 	\item Cross-compiling \emph{libcore} easy thanks to \emph{build-std} cargo feature
-	\item Amazing rust-console/gba crate provides basic HAL
+	\item rust-console/gba crate provides basic HAL
 	\item Snake game from around 2015, but no "complex" games written in Rust to our knowledge
 \end{itemize}
 \end{frame}
@@ -55,7 +72,7 @@
 \begin{frame}
 \frametitle{Starting out}
 \begin{itemize}
-	\item "Hello world" is tricky on this hardware
+	\item "Hello world" is tricky
 	\item Easier to draw something
 	\item Shouldn't be hard, right?
 	\item Until you want to draw something useful for a game, that is
@@ -69,30 +86,63 @@
 	\item GBA has such "bitmap" modes as well (slow!)
 	\item Also supports HW accelerated "tile modes" (fast!)
 	TODO: Insert graphic on how tiles/sprites work
-	\item Custom GFX format, needs a converter (and an ugly python wrapper)
-	
+	\item Custom GFX format, needs a converter \begin{itemize}
+		\item \emph{grit} most commonly-used homebrew tool, docs are meh
+	\end{itemize}
+    \item All this makes custom engine a requirement:
 \end{itemize}
 \end{frame}
 
+\begin{frame}
+    \frametitle{We implemented}
+    \begin{itemize}
+	    \item Sprite allocator with refcounting
+	    \item Simple heap allocator
+	    \item Support for maps of arbitrary size
+	    \item Text engine
+	    \item Filesystem
+	    \item Various debug facilities
+	    \item Test framework
+	    \item Map converter (WIP)
+	    \item Not much gameplay (just movement, placing blocks, inventory system)
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{We didn't finish}
+\begin{itemize}
+	\item Picked a project too ambitious in scope
+	\item Underestimated engine dev effort
+    \item Underestimated effort needed for asset pipeline \begin{itemize}
+    	\item Undocumented Mindustry save format 
+    	\item Source of many bugs
+    	\item Spent >25\% of dev time there
+    \end{itemize}
+    \item Project management failures (deadlines, working independently)
+	\item Good ol' procrastination
+	\item Nonetheless, Rust saved us some time:
+\end{itemize}
+\end{frame}
 
 \begin{frame}
 \frametitle{Rust ecosystem}
 \begin{itemize}
-	\item Use of easily integrated \emph{no\_std} crates
+	\item Many easily integrated \emph{no\_std} crates
     \begin{itemize}
-    	\item \emph{serde} for map metadata loading
+    	\item \emph{serde} for map metadata loading from JSON
     	\item \emph{tiny\_ecs} for ECS (good pattern for structuring games in Rust)
     	\item \emph{hashbrown} for hashmap
     	\item \emph{fixed} for fixed-point maths (fast!)
+    	\item Many more small ones used
     \end{itemize}
 	\item Crates reduced dev time by a lot
-	\item Downside: Some libs assume stuff (atomics support)
+	\item Downside: Some assume stuff (atomics support)
 	\item Downside: Others are needlessly \emph{std}-dependent (patches)
 \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{Rust APIs}
+\frametitle{Rust APIs/tooling}
 \begin{itemize}
 	\item Tile-based custom text output w/ formatting in <50 LOC thanks to \emph{Write} trait
 	\item Custom test framework w/ minimal boilerplate
@@ -104,7 +154,7 @@
 \begin{itemize}
 	\item Only hit memory bugs in our \emph{unsafe} allocator
 	\item Saves us a lot of time (which we need to squash logic bugs instead)
-	\item \emph{clippy} could be better at reporting alignment issues
+	\item Could make more use of borrow checker for managing HW resources
 \end{itemize}
 \end{frame}
 
@@ -112,20 +162,9 @@
 \frametitle{Rust speed}
 \begin{itemize}
 	\item No CPU bottleneck yet, despite many abstractions
-	\item Code isn't very optimized yet
+	\item Code isn't very optimized
     \item \emph{const\_fn} allowed for a low-cost FS implementation
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{We didn't finish}
-\begin{itemize}
-	\item Picked a project too ambitious in scope
-	\item Underestimated engine dev effort \begin{itemize}
-		\item The HW is not designed for this kind of game
-		\item Still not sure how we'll implement saving, multiplayer, etc.
-	\end{itemize}
-	\item This is not a 5h/week job
+    \item Easy mixing of ARM/Thumb code would be nice
 \end{itemize}
 \end{frame}
 
@@ -134,7 +173,7 @@
 \begin{itemize}
     \item I believe Rust is a good fit (but I'm biased)
 	\item Will develop project further
-	\item Interested? Fork us on github: https://github.com/industry-advance/industry-advance (take a look under "Projects"!)
+	\item Interested? Fork us on github: https://github.com/industry-advance/industry-advance (take a look under "Projects" for roadmap!)
 \end{itemize}
 \end{frame}
 
