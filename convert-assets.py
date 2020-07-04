@@ -264,7 +264,7 @@ def convert_mindustry_maps_to_png(
     """
     # Maps that we can't parse (yet)
     # Usually because the map format version is unsupported
-    map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav"]
+    map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav", "/home/buh/programming/industry-advance/Mindustry/core/assets/maps/frozenForest.msav"]
     metadata: List[Tuple[int, int, str]] = list()
     png_paths: List[str] = list()
     for m in map_paths:
