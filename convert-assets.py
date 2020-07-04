@@ -26,6 +26,8 @@ import subprocess
 import tempfile
 from time import sleep
 
+import hashlib
+
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from typing import List, Tuple
@@ -140,6 +142,7 @@ def convert_fonts():
     # Insert character list into FS (they're ordered in the same order as in the img)
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
     subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
+    os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
     # Run grit to actually convert glyphs
     subprocess.run(
         "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
@@ -148,6 +151,7 @@ def convert_fonts():
         shell=True,
         check=True,
     )
+    os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
 
 
 def get_map_paths() -> List[str]:
@@ -218,6 +222,7 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
             check=True,
         )
         print(OUT_PATH)
+        os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
         sleep(5)
     map_paths.sort()
     print(map_paths)
@@ -318,7 +323,7 @@ def convert_maps():
         print(maps.to_json())
         f.write(maps.to_json())
     gbfs_utils.insert(OUT_PATH, "maps.json")
-
+    os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
 
 def main():
     print("----Converting font...----")
