@@ -437,7 +437,7 @@ def floor_ids_to_png(
         for (j, floor_id) in enumerate(col):
             # Find filename for given tile
             if floor_id not in BLOCKS.keys():
-                # print("Unknown floor block with ID: {}, substituting".format(floor_id))
+                print("Unknown floor block with ID: {}, substituting".format(floor_id))
                 # Placeholder until bug is fixed
                 # TODO: Remove
                 floor_name = BLOCKS[0]
@@ -470,7 +470,7 @@ def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
         print("Width: {}, height: {}".format(width, height))
         print("Converting to PNG")
         # TODO: Tempdir
-        png_path = "{}-map.png".format(os.path.splitext(path)[0])
+        png_path = "/tmp/msav-converter/{}-map.png".format(metadata["name"])
         floor_ids_to_png(width, height, floor_ids, png_path)
         return (width, height, metadata["name"], png_path)
 
