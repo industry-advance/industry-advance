@@ -73,7 +73,6 @@ def get_sprite_paths() -> List[str]:
                     print("Not used: " + name)
     sprite_paths.sort()
     print(sprite_paths)
-    sleep(1)
     return sprite_paths
 
 
@@ -128,12 +127,6 @@ def convert_sprites(sprite_paths: List[str]):
     for sprite_path in sprite_paths:
         all_sprite_paths = all_sprite_paths + " " + sprite_path
 
-    if checksum_counter > 19:
-        print("faulting CHECKSUM: ")
-        print("grit {}  -fa -ftg -fh! -gT -pS -S sprite_shared -oassets -Oassets -gB8".format(
-            all_sprite_paths
-        ))
-        input()
     # Run grit
     subprocess.run(
         "grit {}  -fa -ftg -fh! -gT -pS -S sprite_shared -oassets -Oassets -gB8".format(
@@ -231,12 +224,6 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         # Because grit is too stupid to append, we need to let it generate a new assets archive
         # then unpack ours and add stuff to it by copying from grit's archive.
         # Run grit
-        if checksum_counter > 19:
-            print("faulting CHECKSUM: ")
-            print("grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
-                all_fragment_paths, OUT_PATH, OUT_PATH, map_name
-            ))
-            input()
         subprocess.run(
             "grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
@@ -249,7 +236,6 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         checksum_counter += 1
     map_paths.sort()
     print(map_paths)
-    sleep(3)
     for (map_name, fragmented_map) in map_paths:
         convert_single_map_via_grit(map_name, fragmented_map)
 
@@ -264,7 +250,7 @@ def convert_mindustry_maps_to_png(
     """
     # Maps that we can't parse (yet)
     # Usually because the map format version is unsupported
-    map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav", "/home/buh/programming/industry-advance/Mindustry/core/assets/maps/frozenForest.msav"]
+    map_blacklist = ["Mindustry/core/assets/maps/shoreline.msav", "Mindustry/core/assets/maps/frozenForest.msav"]
     metadata: List[Tuple[int, int, str]] = list()
     png_paths: List[str] = list()
     for m in map_paths:
@@ -311,10 +297,8 @@ def convert_maps():
     map_paths = get_map_paths()
     (map_png_paths, metadata) = convert_mindustry_maps_to_png(map_paths)
     print(map_png_paths)
-    sleep(2)
     padded_map_png_paths = pad_maps(map_png_paths)
     print(padded_map_png_paths)
-    sleep(2)
     split_map_png_paths: List[Tuple[str, List[str]]] = list()
     for i, map_png in enumerate(padded_map_png_paths):
         split_map_paths = split_maps_into_chunks([map_png])
@@ -341,7 +325,7 @@ def convert_maps():
         maps.maps.append(map_entry)
 
     convert_maps_via_grit(split_map_png_paths)
-
+    maps.maps.sort(key=lambda obj: obj.name)
     # JSON file containing map metadata
     with open("maps.json", "w") as f:
         print(maps.to_json())
