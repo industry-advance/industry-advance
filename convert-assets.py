@@ -24,6 +24,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+from time import sleep
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
@@ -64,7 +65,9 @@ def get_sprite_paths() -> List[str]:
                     sprite_paths.append(os.path.join(root, name))
                 else:
                     print("Not used: " + name)
+    sprite_paths.sort()
     print(sprite_paths)
+    sleep(1)
     return sprite_paths
 
 
@@ -112,7 +115,7 @@ def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
 
 
 def convert_sprites(sprite_paths: List[str]):
-
+    sprite_paths.sort()
     # For now, all sprites are assumed to be part of the same scene, and therefore share the same palette
     all_sprite_paths: str = ""
     for sprite_path in sprite_paths:
@@ -197,7 +200,7 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         # Grit expects paths as a long list of strings
         all_fragment_paths: str = ""
         for fragment_path in map_fragment_paths:
-            all_fragment_paths = all_fragment_paths + " " + fragment_path
+            all_fragment_paths = all_fragment_paths + " '" + fragment_path + "'"
 
         print(
             "Packing map named {} with fragments {}".format(
@@ -214,7 +217,11 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
             shell=True,
             check=True,
         )
-
+        print(OUT_PATH)
+        sleep(5)
+    map_paths.sort()
+    print(map_paths)
+    sleep(3)
     for (map_name, fragmented_map) in map_paths:
         convert_single_map_via_grit(map_name, fragmented_map)
 
@@ -239,6 +246,7 @@ def convert_mindustry_maps_to_png(
         print("Converting map: {}".format(m))
         (width, height, name, png_path) = parse_save.map_file_to_map(m)
         png_paths.append(png_path)
+        print(png_path)
         metadata.append((width, height, name))
     return (png_paths, metadata)
 
@@ -273,7 +281,11 @@ def convert_maps():
     maps: Maps = Maps(maps=list())
     map_paths = get_map_paths()
     (map_png_paths, metadata) = convert_mindustry_maps_to_png(map_paths)
+    print(map_png_paths)
+    sleep(2)
     padded_map_png_paths = pad_maps(map_png_paths)
+    print(padded_map_png_paths)
+    sleep(2)
     split_map_png_paths: List[Tuple[str, List[str]]] = list()
     for i, map_png in enumerate(padded_map_png_paths):
         split_map_paths = split_maps_into_chunks([map_png])
