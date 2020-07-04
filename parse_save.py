@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import zlib
+import time
 import sys
 from typing import Dict, Tuple, List
 import codecs
@@ -177,8 +178,8 @@ BLOCK_NAMES: List[str] = [
     "thruster",
     # conveyor multiple versions
     "conveyor-0-0",
-    "titanium-conveyor",
-    "armored-conveyor",
+    "titanium-conveyor-0-0",
+    "armored-conveyor-0-0",
     "distributor",
     "junction",
     # itemBridge multiple versions
@@ -212,7 +213,7 @@ BLOCK_NAMES: List[str] = [
     "differential-generator",
     "rtg-generator",
     "solar-panel",
-    "large-solar-panel",
+    "solar-panel-large",
     "thorium-reactor",
     "impact-reactor",
     "battery",
@@ -220,7 +221,7 @@ BLOCK_NAMES: List[str] = [
     "power-node",
     "power-node-large",
     "surge-tower",
-    "diode1",
+    "diode",
 ]
 
 BLOCKS: Dict[int, str] = {i: k for (i, k) in enumerate(BLOCK_NAMES)}
@@ -343,29 +344,36 @@ def read_map(
     and remaining unread part of the bytearray.
     """
     # Discard 4 byte region length we don't care about ATM
+    print("Region length data: {}".format(data[0:4].hex()))
     data = data[4:]
+    print("Map width and height data: {}".format(data[0:4].hex()))
     width = int.from_bytes([data[0], data[1]], byteorder="big", signed=False)
     height = int.from_bytes([data[2], data[3]], byteorder="big", signed=False)
-    data = data[4:]
     print("Width {}, height {}".format(width, height))
+
+    data = data[4:]
+    print("Actual map data (first 16 bytes): {}".format(data[0:16].hex()))
     # Read floor and ore IDs
     floor_ids: List[List[int]] = list()
-    for _ in range(0, width):
+    for _ in range(0, height):
         inner_list = list()
-        for _ in range(0, height):
+        for _ in range(0, width):
             inner_list.append(0)
         floor_ids.append(inner_list)
 
     ore_ids: List[List[int]] = list()
-    for _ in range(0, width):
+    for _ in range(0, height):
         inner_list = list()
-        for _ in range(0, height):
+        for _ in range(0, width):
             inner_list.append(0)
         ore_ids.append(inner_list)
     x_pos = 0
     y_pos = 0
     while ((x_pos - 1) <= width) and ((y_pos - 1) <= height):
         floor_id = int.from_bytes(data[:2], byteorder="big", signed=True)
+        if floor_id < 0 or floor_id > 29000:
+            print("WRONG ID: " + str(floor_id) + " bytes: {}".format(data[0:4].hex()))
+            time.sleep(10)
         data = data[2:]
         ore_id = int.from_bytes(data[:2], byteorder="big", signed=True)
         data = data[2:]
@@ -373,7 +381,11 @@ def read_map(
         consecutives = int.from_bytes(data[:1], byteorder="big", signed=False)
         data = data[1:]
 
-        for _ in range(0, consecutives):
+        for _ in range(0, consecutives+1):
+
+            floor_ids[x_pos][y_pos] = floor_id
+            ore_ids[x_pos][y_pos] = ore_id
+
             if x_pos == (width - 1):
                 y_pos += 1
                 x_pos = 0
@@ -382,9 +394,6 @@ def read_map(
 
             if y_pos >= height:
                 return (width, height, floor_ids, ore_ids, list(), data)
-
-            floor_ids[x_pos][y_pos] = floor_id
-            ore_ids[x_pos][y_pos] = ore_id
 
 
 def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
@@ -425,7 +434,7 @@ def floor_ids_to_png(
         for (j, floor_id) in enumerate(col):
             # Find filename for given tile
             if floor_id not in BLOCKS.keys():
-                print("Unknown floor block with ID: {}, substituting".format(floor_id))
+                # print("Unknown floor block with ID: {}, substituting".format(floor_id))
                 # Placeholder until bug is fixed
                 # TODO: Remove
                 floor_name = BLOCKS[0]
