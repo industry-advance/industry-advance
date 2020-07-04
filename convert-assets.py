@@ -47,6 +47,10 @@ CURRENTLY_USED_SPRITES: List[str] = ["containerTiles.png", "copper-wall.png", "c
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
 MAPS_IN_DIR = "Mindustry/core/assets/maps/"
 
+last_identical_checksum="dc09b91091881808048dd306cae18f7b88c7ed2824d2d3bf08e3339ab1e36acb2905c8ba843513f4fa7b2aabb04cde5d9d7475f8b77bdfe69c2866c8f606b28a"
+now_differs=False
+checksum_counter = 0
+
 # Path to font which should be included
 TTF_FONT_PATH = "Px437_IBM_BIOS.ttf"
 # Path to final archive
@@ -117,12 +121,19 @@ def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
 
 
 def convert_sprites(sprite_paths: List[str]):
+    global checksum_counter
     sprite_paths.sort()
     # For now, all sprites are assumed to be part of the same scene, and therefore share the same palette
     all_sprite_paths: str = ""
     for sprite_path in sprite_paths:
         all_sprite_paths = all_sprite_paths + " " + sprite_path
 
+    if checksum_counter > 19:
+        print("faulting CHECKSUM: ")
+        print("grit {}  -fa -ftg -fh! -gT -pS -S sprite_shared -oassets -Oassets -gB8".format(
+            all_sprite_paths
+        ))
+        input()
     # Run grit
     subprocess.run(
         "grit {}  -fa -ftg -fh! -gT -pS -S sprite_shared -oassets -Oassets -gB8".format(
@@ -131,9 +142,11 @@ def convert_sprites(sprite_paths: List[str]):
         shell=True,
         check=True,
     )
-
+    os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
+    checksum_counter += 1
 
 def convert_fonts():
+    global checksum_counter
     temp_dir: str = tempfile.TemporaryDirectory().name
     pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True)
     char_file = pathlib.Path(temp_dir).joinpath("font_chars.txt")
@@ -143,6 +156,7 @@ def convert_fonts():
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
     subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
     os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
+    checksum_counter += 1
     # Run grit to actually convert glyphs
     subprocess.run(
         "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
@@ -152,6 +166,8 @@ def convert_fonts():
         check=True,
     )
     os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
+    checksum_counter += 1
+    
 
 
 def get_map_paths() -> List[str]:
@@ -195,6 +211,7 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
     """
 
     def convert_single_map_via_grit(map_name: str, map_fragment_paths: List[str]):
+        global checksum_counter
         """
         Takes an array of 32x32 tile slices of a map, and converts them to GBA format.
         WARNING: Do not use on more than 1 map at once, or your colors will be messed up
@@ -214,6 +231,12 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         # Because grit is too stupid to append, we need to let it generate a new assets archive
         # then unpack ours and add stuff to it by copying from grit's archive.
         # Run grit
+        if checksum_counter > 19:
+            print("faulting CHECKSUM: ")
+            print("grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
+                all_fragment_paths, OUT_PATH, OUT_PATH, map_name
+            ))
+            input()
         subprocess.run(
             "grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
@@ -223,7 +246,7 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         )
         print(OUT_PATH)
         os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
-        sleep(5)
+        checksum_counter += 1
     map_paths.sort()
     print(map_paths)
     sleep(3)
@@ -280,6 +303,7 @@ class Maps:
 
 
 def convert_maps():
+    global checksum_counter
     """
     Converts maps to industry-advance format.
     """
@@ -324,6 +348,7 @@ def convert_maps():
         f.write(maps.to_json())
     gbfs_utils.insert(OUT_PATH, "maps.json")
     os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
+    checksum_counter += 1
 
 def main():
     print("----Converting font...----")
