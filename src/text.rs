@@ -159,16 +159,33 @@ impl TextEngine {
 
     /// Sets the X, Y onscreen position for the cursor on screen, in tiles.
     /// Value must not be greater than `SCREEN_WIDTH_TILES` and `SCREEN_HEIGHT_TILES`, respectively.
-    fn set_cursor_pos(&mut self, x: u8, y: u8) {
+    pub fn set_cursor_pos(&mut self, x: u8, y: u8) {
         assert!(x < SCREEN_WIDTH_TILES as u8);
         assert!(y < SCREEN_HEIGHT_TILES as u8);
         self.cursor_x = x;
         self.cursor_y = y;
     }
 
+    /// Puts selected character at current cursor position and advances it
+    fn put_char_and_advance(&mut self, chara: char) {
+        self.put_char(chara, self.cursor_x, self.cursor_y);
+        // When line on screen is full, advance to next one
+        if self.cursor_x >= (SCREEN_WIDTH_TILES - 1) as u8 {
+            self.set_cursor_pos(0, self.cursor_y + 1);
+        } else {
+            self.set_cursor_pos(self.cursor_x + 1, self.cursor_y);
+        }
+        // When all lines are full, start overwriting from the top
+        if self.cursor_y >= SCREEN_HEIGHT_TILES as u8 {
+            self.set_cursor_pos(0, 0);
+        }
+    }
+
     /// Puts selected character at given screen position
-    /// and advances cursor.
-    fn put_char(&mut self, chara: char) {
+    /// without advancing the cursor.
+    pub fn put_char(&mut self, chara: char, x: u8, y: u8) {
+        assert!(x < SCREEN_WIDTH_TILES as u8);
+        assert!(y < SCREEN_HEIGHT_TILES as u8);
         // Look up the glyph tile ID
         let tile_id = match self.char_to_tile_id.get(&chara) {
             Some(id) => id,
@@ -179,23 +196,11 @@ impl TextEngine {
         let glyph = TextScreenblockEntry::from_tile_id(*tile_id);
         // TODO: This cast should be abstracted away by the lib; submit a PR
         unsafe {
-            let offset_in_sb: isize =
-                (self.cursor_x as isize) + (self.cursor_y as isize * BG_WIDTH_TILES as isize);
+            let offset_in_sb: isize = (x as isize) + (y as isize * BG_WIDTH_TILES as isize);
             let sb_entries = SCREEN_BASE_BLOCKS
                 .index(self.screenblock as usize)
                 .cast::<TextScreenblockEntry>();
             sb_entries.offset(offset_in_sb).write(glyph);
-        }
-
-        // When line on screen is full, advance to next one
-        if self.cursor_x >= (SCREEN_WIDTH_TILES - 1) as u8 {
-            self.set_cursor_pos(0, self.cursor_y + 1);
-        } else {
-            self.set_cursor_pos(self.cursor_x + 1, self.cursor_y);
-        }
-        // When all lines are full, start overwriting from the top
-        if self.cursor_y >= SCREEN_HEIGHT_TILES as u8 {
-            self.set_cursor_pos(0, 0);
         }
     }
 
@@ -224,7 +229,7 @@ impl fmt::Write for TextEngine {
             if chara == '\n' {
                 self.set_cursor_pos(0, self.cursor_y + 1);
             } else {
-                self.put_char(chara);
+                self.put_char_and_advance(chara);
             }
         }
         return fmt::Result::Ok(());

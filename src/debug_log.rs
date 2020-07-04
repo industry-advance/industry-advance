@@ -22,6 +22,7 @@ pub enum Subsystems {
     BuilderSystem,
     Text,
     Map,
+    Menu,
 }
 
 impl Subsystems {
@@ -38,6 +39,7 @@ impl Subsystems {
             BuilderSystem => "BUILDER SYSTEM",
             Text => "TEXT",
             Map => "MAP",
+            Menu => "MENU",
         }
     }
 }

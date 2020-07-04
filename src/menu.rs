@@ -1,14 +1,14 @@
 //! This module contains a simple menu system for stuff like crafting, inventory etc.
 
-use crate::shared_constants::TEXT_CHARBLOCK;
 use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_HEIGHT_TILES, SCREEN_WIDTH};
 use crate::shared_constants::{WINDOW_0_SCREENBLOCK, WINDOW_1_SCREENBLOCK};
 use crate::shared_types::Background;
 use crate::text::TextEngine;
+use crate::{debug_log, debug_log::Subsystems};
 
 use core::fmt::Write;
 
-use gba::io::{background, display, window};
+use gba::io::{display, keypad, window};
 
 static mut WINDOW_0_TAKEN: bool = false;
 static mut WINDOW_1_TAKEN: bool = false;
@@ -125,19 +125,77 @@ impl Window {
 
     /// Create a text-based menu, and return the index of the choice the player picked
     pub fn make_menu(&mut self, title: &str, menu_entries: &[&str]) -> usize {
-        writeln!(&mut self.text, "{}", title).unwrap();
-        // Caret starts on 1st entry
-        writeln!(&mut self.text, "> {}", menu_entries[0]).unwrap();
-        // FIXME: Implement scrolling so that more stuff fits on screen
-        // Until that happens, we only show as many entries as can fit
-        for entry in menu_entries[1..(SCREEN_HEIGHT_TILES - 2)].iter() {
-            writeln!(&mut self.text, "  {}", entry).unwrap();
+        // Redraws the cursor
+        fn update_menu(text: &mut TextEngine, menu_entries: &[&str], cursor_pos: u8) {
+            debug_log!(Subsystems::Menu, "Updating");
+            // Remove the cursor from other positions
+            for (i, _) in menu_entries[0..(SCREEN_HEIGHT_TILES - 1)]
+                .iter()
+                .enumerate()
+            {
+                text.put_char(' ', 0, (i + 1) as u8);
+            }
+
+            // Set the cursor
+            text.put_char('>', 0, cursor_pos);
         }
 
-        // TODO: Process user choice
-        loop {}
-        // FIXME: Correct
-        return 0;
+        let mut last_keys = keypad::read_key_input();
+        let mut keys_dirty = false;
+        let mut current_selection = 0;
+
+        writeln!(&mut self.text, "{}", title).unwrap();
+        debug_log!(Subsystems::Menu, "Foo");
+        // FIXME: Implement scrolling so that more stuff fits on screen
+        // Until that happens, we only show as many entries as can fit
+        for (i, entry) in menu_entries[0..(SCREEN_HEIGHT_TILES - 1)]
+            .iter()
+            .enumerate()
+        {
+            // Special case: Last line should not end on a newline (or it violates a text engine assertion)
+            if i == SCREEN_HEIGHT_TILES - 2 {
+                write!(&mut self.text, "  {}", entry).unwrap();
+            } else {
+                writeln!(&mut self.text, "  {}", entry).unwrap();
+            }
+        }
+        update_menu(&mut self.text, menu_entries, 1);
+
+        loop {
+            // Read the current state of the keypad
+            let keys = keypad::read_key_input();
+            let delta = keys.difference(last_keys);
+            last_keys = keys;
+            if delta.up() && !keys_dirty && keys.up() {
+                keys_dirty = true;
+                // Move cursor up
+                // Unless we're at the very top already
+                if current_selection == 0 {
+                    current_selection = SCREEN_HEIGHT_TILES - 2;
+                } else {
+                    current_selection -= 1;
+                }
+            } else if delta.down() && !keys_dirty && keys.down() {
+                keys_dirty = true;
+                // Move cursor down
+                // Unless we're at the very bottom
+                if current_selection == SCREEN_HEIGHT_TILES - 2 {
+                    current_selection = 0;
+                    debug_log!(Subsystems::Menu, "Moving down");
+                } else {
+                    current_selection += 1;
+                }
+            } else if delta.a() || delta.start() {
+                // Confirm selection
+                return current_selection;
+            }
+
+            // Draw menu with updated cursor position
+            if keys_dirty {
+                update_menu(&mut self.text, menu_entries, (current_selection + 1) as u8);
+                keys_dirty = false;
+            }
+        }
     }
 }
 
