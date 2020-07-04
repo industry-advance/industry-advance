@@ -355,16 +355,16 @@ def read_map(
     print("Actual map data (first 16 bytes): {}".format(data[0:16].hex()))
     # Read floor and ore IDs
     floor_ids: List[List[int]] = list()
-    for _ in range(0, height):
+    for _ in range(0, width):
         inner_list = list()
-        for _ in range(0, width):
+        for _ in range(0, height):
             inner_list.append(0)
         floor_ids.append(inner_list)
 
     ore_ids: List[List[int]] = list()
-    for _ in range(0, height):
+    for _ in range(0, width):
         inner_list = list()
-        for _ in range(0, width):
+        for _ in range(0, height):
             inner_list.append(0)
         ore_ids.append(inner_list)
     x_pos = 0
@@ -381,9 +381,12 @@ def read_map(
         consecutives = int.from_bytes(data[:1], byteorder="big", signed=False)
         data = data[1:]
 
-        for _ in range(0, consecutives+1):
+        for _ in range(0, consecutives + 1):
 
-            floor_ids[x_pos][y_pos] = floor_id
+            try:
+                floor_ids[x_pos][y_pos] = floor_id
+            except Exception:
+                print("Map except X: {}, Y: {}".format(x_pos, y_pos))
             ore_ids[x_pos][y_pos] = ore_id
 
             if x_pos == (width - 1):
