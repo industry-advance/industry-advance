@@ -138,8 +138,9 @@ def convert_fonts():
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
     subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
     # Run grit to actually convert glyphs
+    # Text palette starts at 0
     subprocess.run(
-        "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+        "grit {} -ftg -fh! -p! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
             img_file
         ),
         shell=True,
@@ -204,11 +205,10 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
                 map_name, all_fragment_paths
             )
         )
-        # Because grit is too stupid to append, we need to let it generate a new assets archive
-        # then unpack ours and add stuff to it by copying from grit's archive.
         # Run grit
+        # First 16 palette colors are reserved for text (hence -ps16)
         subprocess.run(
-            "grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
+            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
             ),
             shell=True,

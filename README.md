@@ -26,7 +26,9 @@ resources (and expect exclusive access to them). Otherwise, fun debugging will e
 * `Screenblocks 8-11:` Entirely managed by the background system
 * `Charblock 2:` Entirely managed by the text engine
 * `Screenblock 24:` Entirely managed by the text engine
+* `Screenblocks 25, 26:` Used by instances of `crate::menu::Window`
 * `Charblock 3:` Unusable, as it overlaps the screenblocks we use
+* `Windows:` Entirely used by instances of `crate::menu::Window`
 
 ## Further reading
 

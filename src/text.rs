@@ -14,8 +14,12 @@ use crate::{debug_log, Subsystems::Text};
 use gba::io::background::{BGSize, BackgroundControlSetting, BG3CNT};
 use gba::io::display::DISPCNT;
 use gba::io::dma::{DMAControlSetting, DMA3};
+use gba::palram;
 use gba::vram::text::TextScreenblockEntry;
-use gba::vram::{SCREEN_BASE_BLOCKS, VRAM_BASE_USIZE};
+use gba::{
+    vram::{SCREEN_BASE_BLOCKS, VRAM_BASE_USIZE},
+    Color,
+};
 
 use gbfs_rs::Filename;
 use hashbrown::hash_map::HashMap;
@@ -75,6 +79,14 @@ impl TextEngine {
                     .with_use_32bit(true)
                     .with_enabled(true),
             );
+        }
+
+        // TODO: Load colors other than black
+        let idx = palram::index_palram_bg_4bpp(0, 0);
+        idx.write(Color::from_rgb(0, 0, 0));
+        for i in 1..15 {
+            let idx = palram::index_palram_bg_4bpp(0, i);
+            idx.write(Color::from_rgb(31, 31, 31));
         }
 
         let mut engine = TextEngine {
