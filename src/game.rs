@@ -75,6 +75,9 @@ impl Game {
         );
         sprite_allocator.init();
 
+        // Stop blanking the screen so that menus are visible
+        DISPCNT.write(DISPCNT.read().with_force_vblank(false));
+
         // Ask the player which map they'd like
         let maps = Maps::read_map_data();
         let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
@@ -115,7 +118,7 @@ impl Game {
         drop(components);
 
         // Initialize the text engine
-        let text_engine = TextEngine::with_default_font_and_screenblock();
+        let text_engine = TextEngine::with_default_font_screenblock_and_background();
 
         debug_log!(Subsystems::Game, "Init done. Starting game loop");
 

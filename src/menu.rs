@@ -1,13 +1,14 @@
 //! This module contains a simple menu system for stuff like crafting, inventory etc.
 
-use crate::shared_constants::SCREEN_HEIGHT_TILES;
+use crate::shared_constants::TEXT_CHARBLOCK;
+use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_HEIGHT_TILES, SCREEN_WIDTH};
 use crate::shared_constants::{WINDOW_0_SCREENBLOCK, WINDOW_1_SCREENBLOCK};
+use crate::shared_types::Background;
 use crate::text::TextEngine;
 
 use core::fmt::Write;
 
-use gba::io::display;
-use gba::io::window;
+use gba::io::{background, display, window};
 
 static mut WINDOW_0_TAKEN: bool = false;
 static mut WINDOW_1_TAKEN: bool = false;
@@ -20,6 +21,7 @@ enum WindowNum {
 pub struct Window {
     num: WindowNum,
     text: TextEngine,
+    bg: Background,
 }
 
 impl Window {
@@ -39,36 +41,72 @@ impl Window {
                 } else {
                     num = WindowNum::One;
                     WINDOW_1_TAKEN = true;
+                    // Initialize window control registers with size for fullscreen
+                    window::WIN1H.write(
+                        window::HorizontalWindowSetting::new()
+                            .with_col_start(0)
+                            .with_col_end(SCREEN_WIDTH as u16),
+                    );
+                    window::WIN1V.write(
+                        window::VerticalWindowSetting::new()
+                            .with_row_start(0)
+                            .with_row_end(SCREEN_HEIGHT as u16),
+                    );
                 }
             } else {
                 num = WindowNum::Zero;
                 WINDOW_0_TAKEN = true;
+                // Initialize window control registers with size for fullscreen
+                window::WIN0H.write(
+                    window::HorizontalWindowSetting::new()
+                        .with_col_start(0)
+                        .with_col_end(SCREEN_WIDTH as u16),
+                );
+                window::WIN0V.write(
+                    window::VerticalWindowSetting::new()
+                        .with_row_start(0)
+                        .with_row_end(SCREEN_HEIGHT as u16),
+                );
             }
         }
         // Initialize a new text engine which draws to our window for ANSI art
         let text: TextEngine;
         match num {
-            WindowNum::Zero => text = TextEngine::with_default_font(WINDOW_0_SCREENBLOCK),
-            WindowNum::One => text = TextEngine::with_default_font(WINDOW_1_SCREENBLOCK),
+            WindowNum::Zero => {
+                text = TextEngine::with_default_font(WINDOW_0_SCREENBLOCK, Background::Two, false)
+            }
+            WindowNum::One => {
+                text = TextEngine::with_default_font(WINDOW_1_SCREENBLOCK, Background::Two, false)
+            }
         }
 
-        // TODO: Draw window border
-
-        return Window { num, text };
+        return Window {
+            num,
+            text,
+            bg: Background::Two,
+        };
     }
 
     /// Make the window visible.
     pub fn show(&mut self) {
         match self.num {
             WindowNum::Zero => {
+                // Enable window display
                 let disp = display::display_control().with_win0(true);
                 display::set_display_control(disp);
+                // Set the window background
+                window::WININ.write(window::InsideWindowSetting::new().with_win0_bg2(true));
             }
             WindowNum::One => {
+                // Enable window display
                 let disp = display::display_control().with_win1(true);
                 display::set_display_control(disp);
+                // Set the window background
+                window::WININ.write(window::InsideWindowSetting::new().with_win1_bg2(true));
             }
         }
+        // We have to enable it in DISPCNT as well
+        self.bg.set_visible(true);
     }
 
     /// Make the window invisible.
