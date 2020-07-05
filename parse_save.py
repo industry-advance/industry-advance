@@ -9,6 +9,17 @@ import py2jdbc.mutf8
 from PIL import Image
 import os
 from enum import IntEnum, auto
+from convert_assets import rescale_sprites_if_needed
+import convert_assets
+
+def log(msg, header = "INFO"):
+
+    logstring = "[{}]: {}".format(header, msg)
+    #convert_assets.LOGFILE.write(logstring + "\n")
+    #convert_assets.LOGFILE.flush()
+    
+
+    print(logstring)
 
 
 # Header (4 bytes)
@@ -292,7 +303,7 @@ def read_version(data: bytearray) -> bytearray:
         print("Unknown map format version: {}".format(version))
         raise Exception("Unknown map format version")
     else:
-        print("Version: {}".format(version))
+        log("Version: {}".format(version), "MAP")
     return data[4:]
 
 
@@ -337,12 +348,14 @@ def read_content(data: bytearray) -> bytearray:
 def read_map(
     data: bytearray,
 ) -> Tuple[int, int, List[List[int]], List[List[int]], List[List[int]], bytearray]:
+    global BLOCKS
     """
     Parse actual map data.
     Returns: Map width and height, as well as list of lists describing
     floor (ground) tile type, another one describing ore type, another one describing block type,
     and remaining unread part of the bytearray.
     """
+    used_sprites = {}
     # Discard 4 byte region length we don't care about ATM
     print("Region length data: {}".format(data[0:4].hex()))
     data = data[4:]
@@ -374,6 +387,10 @@ def read_map(
         if floor_id < 0 or floor_id > 29000:
             print("WRONG ID: " + str(floor_id) + " bytes: {}".format(data[0:4].hex()))
             time.sleep(10)
+        if floor_id not in used_sprites:
+            used_sprites[floor_id] = BLOCKS[floor_id]
+            log("found Floor ID: {} ({})".format(floor_id, BLOCKS[floor_id]))
+
         data = data[2:]
         ore_id = int.from_bytes(data[:2], byteorder="big", signed=True)
         data = data[2:]
@@ -396,7 +413,7 @@ def read_map(
                 x_pos += 1
 
             if y_pos >= height:
-                return (width, height, floor_ids, ore_ids, list(), data)
+                return (width, height, floor_ids, ore_ids, list(), data, used_sprites)
 
 
 def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
@@ -412,7 +429,7 @@ def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
 
 
 def floor_ids_to_png(
-    width: int, height: int, floor_ids: List[List[int]], png_path: str
+    width: int, height: int, floor_ids: List[List[int]], png_path: str, used_sprites: Dict[int, str]
 ):
     # Create image with appropriate size
     # Map names to filenames
@@ -421,15 +438,21 @@ def floor_ids_to_png(
     images = dict()
     root_directory = "Mindustry/core/assets-raw/sprites/blocks/"
     for key in range(0, len(BLOCKS)):
-        filename = "{}.png".format(BLOCKS[key])
-        # Find out in which subdir the file resides
-        matches = glob.glob(root_directory + "/**/" + filename, recursive=True)
-        # print(matches)
-        try:
-            img = Image.open(matches[0])
-            images[BLOCKS[key]] = img
-        except Exception:
-            print("No such file: {}".format(BLOCKS[key]))
+        if key in used_sprites:
+            filename = "{}.png".format(BLOCKS[key])
+            # Find out in which subdir the file resides
+            matches = glob.glob(root_directory + "/**/" + filename, recursive=True)
+            log("Sprite for ID {}: {}".format( key, matches[0]), "MAP")
+            # print(matches)
+            sprite_path_after_resize = rescale_sprites_if_needed([matches[0]])[0]
+            try:
+                
+                log("tmpSprite for ID {}: {}".format( key, sprite_path_after_resize), "MAP")
+                img = Image.open(sprite_path_after_resize)
+                
+                images[BLOCKS[key]] = img
+            except Exception:
+                print("No such file: {}".format(sprite_path_after_resize))
 
     map_img = Image.new(size=(width * 16, height * 16), mode="RGBA")
     for (i, col) in enumerate(floor_ids):
@@ -453,6 +476,7 @@ def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
     Converts a mindustry .msav map to PNG.
     Returns tuple containing width, height, map name and path to PNG.
     """
+    log("TESTETSTETSETSET!!!!!!!!")
     with open(path, "rb") as f:
         print("Decompressing...")
         decompressed = zlib.decompress(f.read())
@@ -466,12 +490,12 @@ def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
         print("Reading content")
         savedata = read_content(savedata)
         print("Reading actual map data...")
-        (width, height, floor_ids, ore_ids, _, savedata) = read_map(savedata)
+        (width, height, floor_ids, ore_ids, _, savedata, used_sprites) = read_map(savedata)
         print("Width: {}, height: {}".format(width, height))
         print("Converting to PNG")
         # TODO: Tempdir
         png_path = "{}-map.png".format(os.path.splitext(path)[0])
-        floor_ids_to_png(width, height, floor_ids, png_path)
+        floor_ids_to_png(width, height, floor_ids, png_path, used_sprites)
         return (width, height, metadata["name"], png_path)
 
 

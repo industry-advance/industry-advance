@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+
+
 """
 Script for converting assets to GBA-friendly formats
 """
@@ -30,6 +32,21 @@ from dataclasses_json import dataclass_json
 from typing import List, Tuple
 
 from PIL import Image
+
+LOGFILE_NAME = "convert.log"
+LOGFILE = None
+
+def log(msg, header = "INFO"):
+    global LOGFILE_NAME
+    global LOGFILE
+
+    logstring = "[{}]: {}".format(header, msg)
+    #LOGFILE.write(logstring + "\n")
+    #LOGFILE.flush()
+    
+
+    print(logstring)
+
 
 # Directory containing sprites to be processed
 SPRITES_IN_DIRS = ["Mindustry/core/assets-raw/sprites/", "assets"]
@@ -68,8 +85,8 @@ def get_sprite_paths() -> List[str]:
             for name in files:
                 if name.endswith(".png") and name in CURRENTLY_USED_SPRITES:
                     sprite_paths.append(os.path.join(root, name))
-                else:
-                    print("Not used: " + name)
+                #else:
+                    #print("Not used: " + name)
     print(sprite_paths)
     return sprite_paths
 
@@ -77,6 +94,7 @@ def get_sprite_paths() -> List[str]:
 def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     resized_sprite_dir: str = tempfile.TemporaryDirectory().name
+    log("resize_dir: {}".format(resized_sprite_dir), "SPRITES")
     for path in in_paths:
         was_resized = False
         # Check whether path is child path of dir that requires resizing
@@ -101,6 +119,7 @@ def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
 def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     padded_sprite_dir: str = tempfile.TemporaryDirectory().name
+    log("padded_sprite_dir: {}".format(padded_sprite_dir), "SPRITES")
     for path in in_paths:
         if pad.sprite_is_too_large(path):
             print("WARNING: Sprite {} too large, skipping".format(path))
@@ -242,7 +261,7 @@ def convert_mindustry_maps_to_png(
         if m in map_blacklist:
             print("Blacklisted map, returning nothing for map")
             continue
-        print("Converting map: {}".format(m))
+        log("Converting map: {}".format(m), "MAP")
         (width, height, name, png_path) = parse_save.map_file_to_map(m)
         png_paths.append(png_path)
         metadata.append((width, height, name))
@@ -314,11 +333,18 @@ def convert_maps():
 
 
 def main():
+    global LOGFILE_NAME
+    global LOGFILE
+    if LOGFILE is None:
+        print("----Opening Logfile----")
+        LOGFILE = open(LOGFILE_NAME, "w")
+
     print("----Converting font...----")
     convert_fonts()
 
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
+    log("sprite_path: {}".format(sprite_paths),"SPRITES")
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
