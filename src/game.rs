@@ -11,11 +11,10 @@ use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
 };
-use crate::text::TextEngine;
 
 use crate::FS;
 
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 
 use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
@@ -46,7 +45,6 @@ pub(crate) struct Game {
     cursor_id: usize,
     live_entity_ids: Vec<usize>,
     input_system: InputSystem,
-    text_engine: TextEngine,
     game_mode: GameMode,
     mode_persist: Option<ModePersist>,
 }
@@ -117,9 +115,6 @@ impl Game {
         player_sprite_handle.set_visibility(true);
         drop(components);
 
-        // Initialize the text engine
-        let text_engine = TextEngine::with_default_font_screenblock_and_background();
-
         debug_log!(Subsystems::Game, "Init done. Starting game loop");
 
         return Game {
@@ -130,7 +125,6 @@ impl Game {
             cursor_id,
             live_entity_ids,
             input_system: InputSystem::init(),
-            text_engine,
             game_mode: GameMode::TimeRunning,
             mode_persist: None,
         };

@@ -121,6 +121,7 @@ impl Window {
                 display::set_display_control(disp);
             }
         }
+        self.bg.set_visible(false);
     }
 
     /// Create a text-based menu, and return the index of the choice the player picked

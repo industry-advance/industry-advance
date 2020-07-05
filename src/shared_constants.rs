@@ -26,9 +26,6 @@ pub const BACKGROUND_SCREEN_BASE_BLOCK: usize = 8;
 /// Charblock used for font data
 /// NOTE: Do not use for anything else!
 pub const TEXT_CHARBLOCK: usize = 2;
-/// Screenblock used for text layer
-/// NOTE: Do not use for anything else!
-pub const TEXT_SCREENBLOCK: usize = 24;
 /// Screenblock used by window 1
 /// NOTE: Do not use for anything else!
 pub const WINDOW_0_SCREENBLOCK: usize = 25;

@@ -121,21 +121,6 @@ impl TextEngine {
         debug_log!(Text, "Text engine init done");
         return engine;
     }
-    /// Initializes a text engine with the default font from GBFS on the default text engine screenblock.
-    /// The filename must be "font", and a UTF8 file "font_chars.txt" must also exist,
-    /// containing all characters in order of appearance in the tile file.
-    /// The file is assumed to contain the font in a 4bpp format, where each tile is exactly
-    /// 1 character.
-    /// No more than 512 glyphs are permitted.
-    pub fn with_default_font_screenblock_and_background() -> TextEngine {
-        return TextEngine::init(
-            "fontTiles",
-            "font_chars.txt",
-            TEXT_SCREENBLOCK as u16,
-            Background::Two,
-            true,
-        );
-    }
 
     /// Initializes a text engine with the default font from GBFS on the given screenblock and background.
     /// The filename must be "font", and a UTF8 file "font_chars.txt" must also exist,
@@ -219,7 +204,6 @@ impl TextEngine {
         }
         self.set_cursor_pos(0, 0);
     }
-    // TODO: Load correct palette
 }
 
 impl fmt::Write for TextEngine {
