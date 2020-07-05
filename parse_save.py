@@ -235,6 +235,24 @@ BLOCK_NAMES: List[str] = [
     "diode",
 ]
 
+#MAP_IDS: List[List[str]]
+
+CONTENT_TYPES=[
+    "item",
+    "block",
+    "mech",
+    "bullet",
+    "liquid",
+    "status",
+    "unit",
+    "weather",
+    "effect",
+    "zone",
+    "loadout",
+    "typeid",
+    "error"
+    ]
+
 BLOCKS: Dict[int, str] = {i: k for (i, k) in enumerate(BLOCK_NAMES)}
 
 """
@@ -328,12 +346,18 @@ def read_metadata(data: bytearray) -> Tuple[Dict[str, str], bytearray]:
     return (metadata, data)
 
 
-def read_content(data: bytearray) -> bytearray:
+def read_content(data: bytearray) -> Tuple[List[List[str]], bytearray]:
+    global CONTENT_TYPES
+    map_ids: List[List[str]] = list()
+    for _ in range(0, len(CONTENT_TYPES)):
+        map_ids.append([])
     # Discard 4 byte region length we don't care about ATM
     data = data[4:]
     mapped: int = int.from_bytes(data[:1], byteorder="big", signed=False)
+    log("mapped: {}".format(mapped))
     data = data[1:]
     for _ in range(0, mapped):
+
         _content_type: int = int.from_bytes(data[:1], byteorder="big", signed=False)
         data = data[1:]
         total: int = int.from_bytes(data[:2], byteorder="big", signed=True)
@@ -341,12 +365,14 @@ def read_content(data: bytearray) -> bytearray:
         for _ in range(0, total):
             # Read a string and discard it
             (content_string, data) = utf8m_java_to_utf8(data)
-            # print(content_string)
-    return data
+            map_ids[_content_type].append(content_string)
+    
+    log("final Data: {}".format(map_ids[1]))
+    return (map_ids, data)
 
 
 def read_map(
-    data: bytearray,
+    data: bytearray, map_ids: List[List[str]]
 ) -> Tuple[int, int, List[List[int]], List[List[int]], List[List[int]], bytearray]:
     global BLOCKS
     """
@@ -388,8 +414,8 @@ def read_map(
             print("WRONG ID: " + str(floor_id) + " bytes: {}".format(data[0:4].hex()))
             time.sleep(10)
         if floor_id not in used_sprites:
-            used_sprites[floor_id] = BLOCKS[floor_id]
-            log("found Floor ID: {} ({})".format(floor_id, BLOCKS[floor_id]))
+            used_sprites[floor_id] = map_ids[1][floor_id]
+            log("found Floor ID: {} ({})".format(floor_id, used_sprites[floor_id]))
 
         data = data[2:]
         ore_id = int.from_bytes(data[:2], byteorder="big", signed=True)
@@ -429,7 +455,7 @@ def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
 
 
 def floor_ids_to_png(
-    width: int, height: int, floor_ids: List[List[int]], png_path: str, used_sprites: Dict[int, str]
+    width: int, height: int, floor_ids: List[List[int]], png_path: str, used_sprites: Dict[int, str], map_ids: List[List[str]]
 ):
     # Create image with appropriate size
     # Map names to filenames
@@ -437,35 +463,52 @@ def floor_ids_to_png(
 
     images = dict()
     root_directory = "Mindustry/core/assets-raw/sprites/blocks/"
-    for key in range(0, len(BLOCKS)):
-        if key in used_sprites:
-            filename = "{}.png".format(BLOCKS[key])
-            # Find out in which subdir the file resides
-            matches = glob.glob(root_directory + "/**/" + filename, recursive=True)
-            log("Sprite for ID {}: {}".format( key, matches[0]), "MAP")
-            # print(matches)
-            sprite_path_after_resize = rescale_sprites_if_needed([matches[0]])[0]
-            try:
-                
-                log("tmpSprite for ID {}: {}".format( key, sprite_path_after_resize), "MAP")
-                img = Image.open(sprite_path_after_resize)
-                
-                images[BLOCKS[key]] = img
-            except Exception:
-                print("No such file: {}".format(sprite_path_after_resize))
+    for key in used_sprites:
+        
+        # Find out in which subdir the file resides
+        search_string = root_directory + "/**/" + map_ids[1][key] + ".png"
+        log("searching for: {}".format(search_string))
+        matches = glob.glob(search_string, recursive=True)
+        if len(matches) == 0:
+            search_string = root_directory + "/**/" + map_ids[1][key] + "[0-9].png"
+            log("searching for: {}".format(search_string))
+            matches = glob.glob(search_string, recursive=True)
+        log("matches: ".format(matches))
+        
+        #filename = "{}.png".format(matches[0])
+
+        log("Sprite for ID {}: {}".format( key, matches[0]), "MAP")
+        # print(matches)
+        sprite_path_after_resize = rescale_sprites_if_needed([matches[0]])[0]
+        try:
+            
+            log("tmpSprite for ID {}: {}".format( key, sprite_path_after_resize), "MAP")
+            img = Image.open(sprite_path_after_resize)
+            
+            images[map_ids[1][key]] = img
+        except Exception:
+            print("No such file: {}".format(sprite_path_after_resize))
 
     map_img = Image.new(size=(width * 16, height * 16), mode="RGBA")
+    used_sprites[0] = "air"
+    images["air"] = Image.new(size=(16,16), mode="RGBA")
+    log("images")
+    for key in images:
+        log("exists", key)
     for (i, col) in enumerate(floor_ids):
         # print("{}".format(len(col)))
         for (j, floor_id) in enumerate(col):
             # Find filename for given tile
-            if floor_id not in BLOCKS.keys():
+            if map_ids[1][floor_id] is None:
+                log("floor_id {} seems to be missing in map_ids[1]".format)
+                log("Testing... {}".format(map_ids[1][floor_id]), "TEST")
                 # print("Unknown floor block with ID: {}, substituting".format(floor_id))
                 # Placeholder until bug is fixed
                 # TODO: Remove
-                floor_name = BLOCKS[0]
+                floor_name = "air"
             else:
-                floor_name = BLOCKS[floor_id]
+                floor_name = map_ids[1][floor_id]
+                print("OK... rendering {}".format(floor_name))
             img = images[floor_name]
             map_img.paste(im=img, box=(i * 16, j * 16))
     map_img.save(fp=png_path, format="png")
@@ -488,14 +531,14 @@ def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
         print("Reading metadata")
         (metadata, savedata) = read_metadata(savedata)
         print("Reading content")
-        savedata = read_content(savedata)
+        (map_ids, savedata) = read_content(savedata)
         print("Reading actual map data...")
-        (width, height, floor_ids, ore_ids, _, savedata, used_sprites) = read_map(savedata)
+        (width, height, floor_ids, ore_ids, _, savedata, used_sprites) = read_map(savedata, map_ids)
         print("Width: {}, height: {}".format(width, height))
         print("Converting to PNG")
         # TODO: Tempdir
         png_path = "{}-map.png".format(os.path.splitext(path)[0])
-        floor_ids_to_png(width, height, floor_ids, png_path, used_sprites)
+        floor_ids_to_png(width, height, floor_ids, png_path, used_sprites, map_ids)
         return (width, height, metadata["name"], png_path)
 
 
