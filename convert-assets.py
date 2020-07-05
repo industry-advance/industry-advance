@@ -38,7 +38,13 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
-CURRENTLY_USED_SPRITES: List[str] = ["containerTiles.png", "copper-wall.png", "cursor.png", "dart-ship.png", "mechanical-drill.png"]
+CURRENTLY_USED_SPRITES: List[str] = [
+    "containerTiles.png",
+    "copper-wall.png",
+    "cursor.png",
+    "dart-ship.png",
+    "mechanical-drill.png",
+]
 
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
@@ -208,7 +214,7 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
         # Run grit
         # First 16 palette colors are reserved for text (hence -ps16)
         subprocess.run(
-            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
+            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
             ),
             shell=True,
@@ -298,7 +304,6 @@ def convert_maps():
             width=width, height=height, name=metadata[i][2], chunks=map_chunks,
         )
         maps.maps.append(map_entry)
-
     convert_maps_via_grit(split_map_png_paths)
 
     # JSON file containing map metadata
