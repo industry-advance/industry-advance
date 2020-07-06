@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+
+
 """
 Script for converting assets to GBA-friendly formats
 """
@@ -34,6 +36,21 @@ from typing import List, Tuple
 
 from PIL import Image
 
+LOGFILE_NAME = "convert.log"
+LOGFILE = None
+
+def log(msg, header = "INFO"):
+    global LOGFILE_NAME
+    global LOGFILE
+
+    logstring = "[{}]: {}".format(header, msg)
+    #LOGFILE.write(logstring + "\n")
+    #LOGFILE.flush()
+    
+
+    print(logstring)
+
+
 # Directory containing sprites to be processed
 SPRITES_IN_DIRS = ["Mindustry/core/assets-raw/sprites/", "assets"]
 # Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need
@@ -41,7 +58,13 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
-CURRENTLY_USED_SPRITES: List[str] = ["containerTiles.png", "copper-wall.png", "cursor.png", "dart-ship.png", "mechanical-drill.png"]
+CURRENTLY_USED_SPRITES: List[str] = [
+    "containerTiles.png",
+    "copper-wall.png",
+    "cursor.png",
+    "dart-ship.png",
+    "mechanical-drill.png",
+]
 
 # Same for maps
 # Note that this directory currently contains maps as .png files, as the mindustry map parser is WIP.
@@ -69,8 +92,8 @@ def get_sprite_paths() -> List[str]:
             for name in files:
                 if name.endswith(".png") and name in CURRENTLY_USED_SPRITES:
                     sprite_paths.append(os.path.join(root, name))
-                else:
-                    print("Not used: " + name)
+                #else:
+                    #print("Not used: " + name)
     sprite_paths.sort()
     print(sprite_paths)
     return sprite_paths
@@ -79,6 +102,7 @@ def get_sprite_paths() -> List[str]:
 def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     resized_sprite_dir: str = tempfile.TemporaryDirectory().name
+    log("resize_dir: {}".format(resized_sprite_dir), "SPRITES")
     for path in in_paths:
         was_resized = False
         # Check whether path is child path of dir that requires resizing
@@ -103,6 +127,7 @@ def rescale_sprites_if_needed(in_paths: List[str]) -> List[str]:
 def pad_sprites_if_needed(in_paths: List[str]) -> List[str]:
     out_paths: List[str] = list()
     padded_sprite_dir: str = tempfile.TemporaryDirectory().name
+    log("padded_sprite_dir: {}".format(padded_sprite_dir), "SPRITES")
     for path in in_paths:
         if pad.sprite_is_too_large(path):
             print("WARNING: Sprite {} too large, skipping".format(path))
@@ -151,8 +176,9 @@ def convert_fonts():
     os.system("sha512sum "+OUT_PATH+" | tee -a checksums.txt")
     checksum_counter += 1
     # Run grit to actually convert glyphs
+    # Text palette starts at 0
     subprocess.run(
-        "grit {} -ftg -fh! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+        "grit {} -ftg -fh! -p! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
             img_file
         ),
         shell=True,
@@ -221,11 +247,10 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
                 map_name, all_fragment_paths
             )
         )
-        # Because grit is too stupid to append, we need to let it generate a new assets archive
-        # then unpack ours and add stuff to it by copying from grit's archive.
         # Run grit
+        # First 16 palette colors are reserved for text (hence -ps16)
         subprocess.run(
-            "grit {} -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S map_{}_shared -gB4".format(
+            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
             ),
             shell=True,
@@ -257,7 +282,7 @@ def convert_mindustry_maps_to_png(
         if m in map_blacklist:
             print("Blacklisted map, returning nothing for map")
             continue
-        print("Converting map: {}".format(m))
+        log("Converting map: {}".format(m), "MAP")
         (width, height, name, png_path) = parse_save.map_file_to_map(m)
         png_paths.append(png_path)
         print(png_path)
@@ -323,7 +348,6 @@ def convert_maps():
             width=width, height=height, name=metadata[i][2], chunks=map_chunks,
         )
         maps.maps.append(map_entry)
-
     convert_maps_via_grit(split_map_png_paths)
     maps.maps.sort(key=lambda obj: obj.name)
     # JSON file containing map metadata
@@ -335,11 +359,18 @@ def convert_maps():
     checksum_counter += 1
 
 def main():
+    global LOGFILE_NAME
+    global LOGFILE
+    if LOGFILE is None:
+        print("----Opening Logfile----")
+        LOGFILE = open(LOGFILE_NAME, "w")
+
     print("----Converting font...----")
     convert_fonts()
 
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
+    log("sprite_path: {}".format(sprite_paths),"SPRITES")
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)

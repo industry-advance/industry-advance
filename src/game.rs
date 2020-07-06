@@ -6,16 +6,15 @@ use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
+use crate::menu::Window;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
 };
-use crate::text::TextEngine;
 
 use crate::FS;
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 
 use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
 use gbfs_rs::Filename;
@@ -46,7 +45,6 @@ pub(crate) struct Game {
     cursor_id: usize,
     live_entity_ids: Vec<usize>,
     input_system: InputSystem,
-    text_engine: TextEngine,
     game_mode: GameMode,
     mode_persist: Option<ModePersist>,
 }
@@ -75,9 +73,18 @@ impl Game {
         );
         sprite_allocator.init();
 
-        // Create a map
+        // Stop blanking the screen so that menus are visible
+        DISPCNT.write(DISPCNT.read().with_force_vblank(false));
+
+        // Ask the player which map they'd like
         let maps = Maps::read_map_data();
-        let map_entry = maps.get_by_name("craters").unwrap();
+        let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
+        let mut win_menu = Window::new();
+        win_menu.show();
+        let choice_idx = win_menu.make_menu("Choose a map", &map_names);
+        drop(win_menu);
+        let map_entry = &maps.maps[choice_idx];
+        // Create a map
         debug_log!(Subsystems::Game, "Loading map {}", map_entry.name);
         let map = map_entry.get_map();
 
@@ -108,9 +115,6 @@ impl Game {
         player_sprite_handle.set_visibility(true);
         drop(components);
 
-        // Initialize the text engine
-        let text_engine = TextEngine::with_default_font_and_screenblock();
-
         debug_log!(Subsystems::Game, "Init done. Starting game loop");
 
         return Game {
@@ -121,7 +125,6 @@ impl Game {
             cursor_id,
             live_entity_ids,
             input_system: InputSystem::init(),
-            text_engine,
             game_mode: GameMode::TimeRunning,
             mode_persist: None,
         };

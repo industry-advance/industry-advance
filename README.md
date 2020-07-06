@@ -20,13 +20,18 @@ resources (and expect exclusive access to them). Otherwise, fun debugging will e
 * `EWRAM:` Entirely used by the global allocator (heap)
 * `OAM`: Entirely managed by the HW sprite allocator
 * `Sprite palette:` Entirely managed by the HW sprite allocator
-* `Background palette (slots 0,1):` Used by the text engine
-* `Background palette (slots 2-255):` Entirely managed by the background system
+* `Background palette (slots 0-15):` Used by the text engine
+* `Background palette (slots 16-255):` Entirely managed by the background system
 * `Charblocks 0, 1:` Entirely managed by the background system
 * `Screenblocks 8-11:` Entirely managed by the background system
 * `Charblock 2:` Entirely managed by the text engine
 * `Screenblock 24:` Entirely managed by the text engine
+* `Screenblocks 25, 26:` Used by instances of `crate::menu::Window`
 * `Charblock 3:` Unusable, as it overlaps the screenblocks we use
+* `Windows:` Entirely used by instances of `crate::menu::Window`
+* `Backgrounds 0, 1`: Used by background
+* `Background 3`: Used by text engine
+* `Background 2`: Used by windows
 
 ## Further reading
 

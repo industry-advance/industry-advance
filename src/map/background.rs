@@ -74,7 +74,8 @@ impl LargeBackground {
 
         // Load palette into VRAM
         for (i, entry) in palette.iter().enumerate() {
-            let idx = palram::index_palram_bg_4bpp((i / 16) as u8, (i % 16) as u8);
+            // First bank (16 colors) reserved for text colors
+            let idx = palram::index_palram_bg_4bpp(((i + 1) / 16) as u8, (i % 16) as u8);
             idx.write(Color(*entry));
         }
 

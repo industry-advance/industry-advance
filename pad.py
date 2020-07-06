@@ -68,7 +68,7 @@ def pad_map(in_path: str) -> str:
         if (width % MAP_MULTIPLE_SIZE) == 0 and (width % MAP_MULTIPLE_SIZE) == 0:
             return in_path
         else:
-            out_path = "{}-padded.png".format(os.path.splitext(in_path)[0])
+            out_path = "{}-p.png".format(os.path.splitext(in_path)[0])
             target_width, target_height = _get_nearest_map_size(width, height)
             _apply_padding(img, out_path, target_width, target_height)
             return out_path

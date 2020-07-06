@@ -36,6 +36,7 @@ mod ewram_alloc;
 mod game;
 mod item;
 mod map;
+mod menu;
 mod shared_constants;
 mod shared_types;
 mod sprite;

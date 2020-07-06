@@ -171,13 +171,13 @@ impl MapEntry {
         // Figure out how the truncation algo works and reverse it here.
         let pal: &'static [u16] = FS
             .get_file_data_by_name_as_u16_slice(
-                Filename::try_from_str(format!("map_{}_sharedPal", self.name)).unwrap(),
+                Filename::try_from_str(format!("{}Pal", self.name)).unwrap(),
             )
             .unwrap();
 
         let tiles: &'static [u32] = FS
             .get_file_data_by_name_as_u32_slice(
-                Filename::try_from_str(format!("map_{}_sharedTiles", self.name)).unwrap(),
+                Filename::try_from_str(format!("{}Tiles", self.name)).unwrap(),
             )
             .unwrap();
 
