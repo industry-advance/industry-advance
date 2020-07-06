@@ -89,12 +89,20 @@ impl TextEngine {
             );
         }
 
-        // TODO: Load colors other than black
-        let idx = palram::index_palram_bg_4bpp(0, 0);
-        idx.write(Color::from_rgb(31, 31, 31));
-        for i in 1..15 {
-            let idx = palram::index_palram_bg_4bpp(0, i);
-            idx.write(Color::from_rgb(0, 0, 0));
+        // Load palette
+        let pal_file = crate::FS
+            .get_file_data_by_name_as_u16_slice(Filename::try_from_str("font_sharedPal").unwrap())
+            .expect("Failed to find font palette in filesystem");
+
+        if pal_file.len() > TEXT_BG_PALETTE_END - TEXT_BG_PALETTE_START {
+            panic!("Font palette too big");
+        }
+        for (i, color) in pal_file.iter().enumerate() {
+            let idx = palram::index_palram_bg_4bpp(
+                ((i + TEXT_BG_PALETTE_START) / 16) as u8,
+                ((i + TEXT_BG_PALETTE_START) % 16) as u8,
+            );
+            idx.write(Color(*color));
         }
 
         let mut engine = TextEngine {
@@ -203,6 +211,12 @@ impl TextEngine {
             }
         }
         self.set_cursor_pos(0, 0);
+    }
+
+    /// Get the current (x, y) position of the cursor.
+    /// Useful if you want to draw things other than text onto the BG as well.
+    pub fn get_cursor_pos(&self) -> (u8, u8) {
+        return (self.cursor_x, self.cursor_y);
     }
 }
 

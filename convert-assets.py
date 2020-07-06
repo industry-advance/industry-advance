@@ -38,12 +38,14 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
+# Needed until we find a better fix for overflowing the sprite palette
 CURRENTLY_USED_SPRITES: List[str] = [
     "containerTiles.png",
     "copper-wall.png",
     "cursor.png",
     "dart-ship.png",
     "mechanical-drill.png",
+    "item-copper.png",
 ]
 
 # Same for maps
@@ -144,9 +146,9 @@ def convert_fonts():
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
     subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
     # Run grit to actually convert glyphs
-    # Text palette starts at 0
+    # Text palette starts at 240 and ends at 255
     subprocess.run(
-        "grit {} -ftg -fh! -p! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+        "grit {} -ga240 -pn16 -ftg -fh! -p -fa -tc -pT0 -pS -m! -mR! -oassets -Oassets -Sfont_shared -gB4".format(
             img_file
         ),
         shell=True,
@@ -212,9 +214,9 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
             )
         )
         # Run grit
-        # First 16 palette colors are reserved for text (hence -ps16)
+        # Last 16 palette colors are reserved for text (hence -pe)
         subprocess.run(
-            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
+            "grit {} -pe239 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
             ),
             shell=True,

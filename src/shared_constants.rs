@@ -8,7 +8,6 @@ pub const SCREEN_WIDTH: usize = 240;
 pub const SCREEN_HEIGHT_TILES: usize = SCREEN_HEIGHT / 8;
 /// Screen width in tiles
 pub const SCREEN_WIDTH_TILES: usize = SCREEN_WIDTH / 8;
-
 /// Size of a screenblock in bytes
 pub const SCREENBLOCK_SIZE_BYTES: usize = 32 * 32 * 2;
 // Size of a single charblock in bytes
@@ -32,3 +31,11 @@ pub const WINDOW_0_SCREENBLOCK: usize = 25;
 /// Screenblock used by window 2
 /// NOTE: Do not use for anything else!
 pub const WINDOW_1_SCREENBLOCK: usize = 26;
+/// The first background palette slot for use by the map.
+pub const MAP_BG_PALETTE_START: usize = 0;
+/// The last background palette slot for use by the map.
+pub const MAP_BG_PALETTE_END: usize = 239;
+/// The first background palette slot for use by the text engine.
+pub const TEXT_BG_PALETTE_START: usize = 240;
+/// The last background palette slot for use by the text engine.
+pub const TEXT_BG_PALETTE_END: usize = 255;

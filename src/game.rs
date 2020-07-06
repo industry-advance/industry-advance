@@ -6,11 +6,11 @@ use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
-use crate::menu::Window;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
 };
+use crate::window::Window;
 
 use crate::FS;
 
@@ -81,7 +81,7 @@ impl Game {
         let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
         let mut win_menu = Window::new();
         win_menu.show();
-        let choice_idx = win_menu.make_menu("Choose a map", &map_names);
+        let choice_idx = win_menu.make_text_menu("Choose a map", &map_names);
         drop(win_menu);
         let map_entry = &maps.maps[choice_idx];
         // Create a map
@@ -115,6 +115,15 @@ impl Game {
         player_sprite_handle.set_visibility(true);
         drop(components);
 
+        // TODO: Remove
+        let mut win = Window::new();
+        let entries = [(
+            "copper",
+            "item_copperTiles",
+            crate::sprite::HWSpriteSize::ThirtyTwoByThirtyTwo,
+        )];
+        win.make_sprite_list("Inventory", &entries, &mut sprite_allocator);
+        drop(win);
         debug_log!(Subsystems::Game, "Init done. Starting game loop");
 
         return Game {

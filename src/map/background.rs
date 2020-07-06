@@ -73,9 +73,14 @@ impl LargeBackground {
         };
 
         // Load palette into VRAM
+        if palette.len() > MAP_BG_PALETTE_END - MAP_BG_PALETTE_START {
+            panic!("Attempt to load BG palette that's too large: allowed size is {} entries, was {} entries", MAP_BG_PALETTE_END-MAP_BG_PALETTE_START, palette.len());
+        }
         for (i, entry) in palette.iter().enumerate() {
-            // First bank (16 colors) reserved for text colors
-            let idx = palram::index_palram_bg_4bpp(((i + 1) / 16) as u8, (i % 16) as u8);
+            let idx = palram::index_palram_bg_4bpp(
+                ((MAP_BG_PALETTE_START + i) / 16) as u8,
+                ((MAP_BG_PALETTE_START + i) % 16) as u8,
+            );
             idx.write(Color(*entry));
         }
 
