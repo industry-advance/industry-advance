@@ -4,7 +4,7 @@ use crate::components::{
 };
 use crate::debug_log::*;
 use crate::entities;
-use crate::entities::{cursor, player};
+use crate::entities::{add_container, add_mechanical_drill, cursor, player};
 use crate::map::{Map, Maps};
 use crate::menu::Window;
 use crate::sprite::HWSpriteAllocator;
@@ -108,6 +108,10 @@ impl Game {
         let copper_wall_id = entities::add_copper_wall(&mut e, &mut sprite_allocator)
             .expect("Failed to initialize copper wall entity");
         live_entity_ids.push(copper_wall_id);
+        let container_id = add_container(&mut e, &mut sprite_allocator)
+            .expect("Failed to initialize container entity");
+        live_entity_ids.push(container_id);
+
 
         // Put the player at the center of the screen
         let mut components = e.borrow_mut::<SpriteComponent>().unwrap();

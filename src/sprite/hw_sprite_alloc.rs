@@ -107,7 +107,13 @@ impl HWSpriteAllocator {
     ) -> HWSpriteHandle {
         let sprite_data = crate::FS
             .get_file_data_by_name_as_u32_slice(filename.try_into().unwrap())
-            .expect("Failed to find sprite with given name in filesystem");
+            .expect(
+                format!(
+                    "Failed to find sprite with given name in filesystem: {}",
+                    filename
+                )
+                .as_str(),
+            );
         return self.alloc(sprite_data, sprite_size);
     }
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 
-
 """
 Script for converting assets to GBA-friendly formats
 """
@@ -36,14 +35,14 @@ from PIL import Image
 LOGFILE_NAME = "convert.log"
 LOGFILE = None
 
-def log(msg, header = "INFO"):
+
+def log(msg, header="INFO"):
     global LOGFILE_NAME
     global LOGFILE
 
     logstring = "[{}]: {}".format(header, msg)
-    #LOGFILE.write(logstring + "\n")
-    #LOGFILE.flush()
-    
+    # LOGFILE.write(logstring + "\n")
+    # LOGFILE.flush()
 
     print(logstring)
 
@@ -56,7 +55,7 @@ SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
 
 CURRENTLY_USED_SPRITES: List[str] = [
-    "containerTiles.png",
+    "container.png",
     "copper-wall.png",
     "cursor.png",
     "dart-ship.png",
@@ -85,8 +84,8 @@ def get_sprite_paths() -> List[str]:
             for name in files:
                 if name.endswith(".png") and name in CURRENTLY_USED_SPRITES:
                     sprite_paths.append(os.path.join(root, name))
-                #else:
-                    #print("Not used: " + name)
+                # else:
+                # print("Not used: " + name)
     print(sprite_paths)
     return sprite_paths
 
@@ -344,7 +343,7 @@ def main():
 
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
-    log("sprite_path: {}".format(sprite_paths),"SPRITES")
+    log("sprite_path: {}".format(sprite_paths), "SPRITES")
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
