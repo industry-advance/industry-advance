@@ -5,6 +5,8 @@
 // Needed for the allocator
 #![feature(alloc_error_handler)]
 #![feature(const_fn)]
+// Needed to deal with errors when compiling the FS
+#![feature(const_panic)]
 // Test harness setup
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
@@ -50,7 +52,10 @@ use core::fmt::Write;
 
 // Filesystem containing assets
 const FS_DATA: &[u8] = include_bytes!("../assets.gbfs");
-const FS: GBFSFilesystem<'static> = GBFSFilesystem::from_slice(FS_DATA);
+const FS: GBFSFilesystem<'static> = match GBFSFilesystem::from_slice(FS_DATA) {
+    Ok(val) => val,
+    Err(_) => panic!("Failed to convert GBFS"),
+};
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
