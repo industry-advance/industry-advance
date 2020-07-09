@@ -7,6 +7,8 @@
 #![feature(const_fn)]
 // Needed to deal with errors when compiling the FS
 #![feature(const_panic)]
+// Needed to implement emulation of atomics
+#![feature(core_intrinsics)]
 // Test harness setup
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test_runner)]
@@ -33,6 +35,7 @@ extern crate arrayref;
 mod components;
 #[macro_use]
 mod debug_log;
+mod atomics;
 mod entities;
 mod ewram_alloc;
 mod game;

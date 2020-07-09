@@ -22,3 +22,4 @@ gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}
 
 serde = {version = "1.0", default-features = false, features = ["derive"]}
 serde_json = {version = "1.0", default-features = false, features = ["alloc"]}
+spinning_top = "0.2.1"
