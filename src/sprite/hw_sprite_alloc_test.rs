@@ -1,5 +1,4 @@
 use crate::FS;
-use gbfs_rs::Filename;
 
 // TODO: Write tests
 
@@ -9,7 +8,7 @@ fn test_init() {
     gba::debug!("[TEST] Testing HW sprite alloc init");
     // Load palette from filesystem
     let pal = FS
-        .get_file_data_by_name_as_u16_slice(Filename::try_from_str("sprite_sharedPal").unwrap())
+        .get_file_data_by_name_as_u16_slice("sprite_sharedPal")
         .unwrap();
     let mut sprite_allocator = super::HWSpriteAllocator::new(&pal);
     sprite_allocator.init();

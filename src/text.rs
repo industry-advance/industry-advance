@@ -21,7 +21,6 @@ use gba::{
     Color,
 };
 
-use gbfs_rs::Filename;
 use hashbrown::hash_map::HashMap;
 use twox_hash::XxHash64;
 
@@ -53,7 +52,6 @@ impl TextEngine {
         background: Background,
         make_visible: bool,
     ) -> TextEngine {
-        let font_tile_filename = Filename::try_from_str(font_tile_filename).unwrap();
         let font_tiles = FS
             .get_file_data_by_name_as_u32_slice(font_tile_filename)
             .unwrap();
@@ -61,7 +59,6 @@ impl TextEngine {
         // Create character -> tile number lookup table
         // TODO: Make this more efficient, both in terms of memory for the mapping and CPU time (maybe use some const map)
         let mut hashmap: HashMap<char, u16, BuildHasherDefault<XxHash64>> = Default::default();
-        let font_chars_filename = Filename::try_from_str(font_chars_filename).unwrap();
         let font_chars = FS.get_file_data_by_name(font_chars_filename).unwrap();
         let font_chars: &str = str::from_utf8(font_chars).unwrap();
         for (i, chara) in font_chars.chars().enumerate() {

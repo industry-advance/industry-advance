@@ -10,7 +10,6 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use gbfs_rs::Filename;
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -148,9 +147,7 @@ impl Maps {
 
     /// Reads from the default map description file.
     pub fn read_map_data() -> Maps {
-        let map = FS
-            .get_file_data_by_name(Filename::try_from_str(Maps::MAPS_PATH).unwrap())
-            .unwrap();
+        let map = FS.get_file_data_by_name(Maps::MAPS_PATH).unwrap();
         let map_data: Maps = serde_json::from_str(str::from_utf8(map).unwrap()).unwrap();
         map_data
     }
@@ -161,24 +158,17 @@ impl MapEntry {
         let mut tilemaps: Vec<&'static [u8]> = Vec::new();
 
         for chunk in &self.chunks {
-            tilemaps.push(
-                FS.get_file_data_by_name(Filename::try_from_str(&chunk.filename).unwrap())
-                    .unwrap(),
-            )
+            tilemaps.push(FS.get_file_data_by_name(&chunk.filename).unwrap())
         }
 
         // FIXME: Grit truncates filenames if they're too long for GBFS.
         // Figure out how the truncation algo works and reverse it here.
         let pal: &'static [u16] = FS
-            .get_file_data_by_name_as_u16_slice(
-                Filename::try_from_str(format!("{}Pal", self.name)).unwrap(),
-            )
+            .get_file_data_by_name_as_u16_slice(format!("{}Pal", self.name).as_str())
             .unwrap();
 
         let tiles: &'static [u32] = FS
-            .get_file_data_by_name_as_u32_slice(
-                Filename::try_from_str(format!("{}Tiles", self.name)).unwrap(),
-            )
+            .get_file_data_by_name_as_u32_slice(format!("{}Tiles", self.name).as_str())
             .unwrap();
 
         // Calculate size in chunks

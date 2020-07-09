@@ -17,7 +17,6 @@ use crate::FS;
 use alloc::{boxed::Box, vec::Vec};
 
 use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
-use gbfs_rs::Filename;
 use tiny_ecs::Entities;
 
 /// Data which is needed to perform game mode switches.
@@ -66,10 +65,8 @@ impl Game {
         // Initialize hardware sprite management
         debug_log!(Subsystems::Game, "Initializing sprite allocator");
         let mut sprite_allocator = HWSpriteAllocator::new(
-            &FS.get_file_data_by_name_as_u16_slice(
-                Filename::try_from_str("sprite_sharedPal").unwrap(),
-            )
-            .unwrap(),
+            &FS.get_file_data_by_name_as_u16_slice("sprite_sharedPal")
+                .unwrap(),
         );
         sprite_allocator.init();
 
