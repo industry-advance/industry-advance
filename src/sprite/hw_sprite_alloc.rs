@@ -1,24 +1,11 @@
-//! This module provides the ability to manage objects (hardware sprites) in video memory.
-//! The interface is allocator-like, with the ability to allocate and free sprites.
-//!
-//! Note that all sprites must share a palette.
-//!
-//! DISPCNT also has to be set for 1D mapping.
-//!
-//! Heavily inspired by this article: https://www.gamasutra.com/view/feature/131491/gameboy_advance_resource_management.php?print=1
-//!
-//! # TODO:
-//! Consider upstreaming to GBA crate.
-//!
-//! Writes to OAM should only happen on VBlank; we should implement some sort of shadow OAM and copy on interrupt
-
+use super::*;
 use crate::debug_log::*;
 
 use core::convert::TryInto;
 use core::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 
-use super::{sprite_dma, HWSpriteSize};
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use gba::{oam, palram, Color};
 use hashbrown::HashMap;
 use twox_hash::XxHash64;
@@ -51,8 +38,12 @@ pub struct HWSpriteAllocator {
     allocation_hashmap: HashMap<u64, usize, BuildHasherDefault<XxHash64>>,
     /// The hasher used for initially hashing the sprite data. This hash is what's stored in the HashMap.
     hasher: XxHash64,
+    /// Sprite palette.
     palette: Box<[Color; 256]>,
-    oam_occupied_list: Box<[bool; 128]>, // List keeping track of which slots in OAM are free
+    /// List keeping track of which slots in OAM are free.
+    oam_occupied_list: Box<[bool; 128]>,
+    /// See `hide_all_push()` and `show_all_pop()` docs for details
+    sprite_visibility_stack: Vec<Box<[bool; 128]>>,
 }
 
 impl HWSpriteAllocator {
@@ -72,12 +63,14 @@ impl HWSpriteAllocator {
         let hashmap: HashMap<u64, usize, BuildHasherDefault<XxHash64>> = Default::default();
         let hasher_builder: BuildHasherDefault<XxHash64> = Default::default();
         let hasher = hasher_builder.build_hasher();
+        let sprite_visibility_stack: Vec<Box<[bool; 128]>> = Vec::new();
         return HWSpriteAllocator {
             allocation_map: entries,
             allocation_hashmap: hashmap,
             hasher,
             palette: pal,
             oam_occupied_list,
+            sprite_visibility_stack,
         };
     }
 
@@ -201,7 +194,7 @@ impl HWSpriteAllocator {
                 pc: 0,
                 pd: 1,
             },
-        ); // Identity matrix
+        ); // Identity matrix, ensures that the last use's affine transform is wiped
         oam::write_obj_attributes(
             oam_slot,
             oam::ObjectAttributes {
@@ -249,8 +242,10 @@ impl HWSpriteAllocator {
     /// Drop the allocation of the given sprite.
     /// Note that the sprite still exists in VRAM until overwritten (or reused if the refcount is not 0),
     /// but is marked as inactive in OAM and therefore not displayed.
-    #[allow(dead_code)]
     pub fn free(&mut self, handle: HWSpriteHandle) {
+        handle.set_visibility(false);
+        self.oam_occupied_list[handle.oam_slot] = false;
+
         // Decrease refcount of first block
         self.allocation_map[handle.starting_block].0 -= 1;
         // Decrease refcount of  all blocks that are marked CONTINUE after the first block
@@ -283,92 +278,43 @@ impl HWSpriteAllocator {
             }
             i += 1;
         }
-
-        // Set the sprite to not render in OAM
-        let mut attrs = oam::read_obj_attributes(handle.oam_slot).unwrap();
-        attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
-        oam::write_obj_attributes(handle.oam_slot, attrs);
-
-        // Mark slot in OAM as available
-        self.oam_occupied_list[handle.oam_slot] = false;
-    }
-}
-
-/// A handle to a hardware sprite allocated in VRAM/OAM.
-/// Also provides some wrappers to avoid the tedium of having to get an object, modify it, and write it back
-/// for commonly used object attributes.
-pub struct HWSpriteHandle {
-    pub sprite_size: HWSpriteSize,
-    starting_block: usize,
-    data_hash: u64,
-    oam_slot: usize,
-}
-
-impl HWSpriteHandle {
-    /// Returns the OAM object attributes for the sprite.
-    pub fn read_obj_attributes(&self) -> oam::ObjectAttributes {
-        return oam::read_obj_attributes(self.oam_slot).unwrap();
     }
 
-    /// Writes the OAM object attributes for the sprite.
+    /// Record which sprites are live on an internal stack and hide all sprites.
     ///
-    /// # Safety
-    ///
-    /// Messing with the sprite's shape, size or base tile will cause graphical glitches.
-    /// If you want to change those attributes, free the sprite and allocate a new one.
-    ///
-    /// The only reason why those fields are exposed is because it'd be too much work to create
-    /// a wrapper for the OAM functionality of the gba crate that disallows this.
-    pub fn write_obj_attributes(&self, attrs: oam::ObjectAttributes) {
-        oam::write_obj_attributes(self.oam_slot, attrs).unwrap();
-    }
-
-    // These are some wrappers to avoid the tedium of having to get an object, modify it, and write it back
-    // for commonly used object attributes.
-
-    /// Set the visibility of the sprite.
-    ///
-    /// Do not use to enable affine sprites.
-    pub fn set_visibility(&self, visible: bool) {
-        let mut attrs = self.read_obj_attributes();
-        if visible {
-            attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Normal);
-        } else {
-            attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
+    /// This is very useful to, for example, display a sprite-based menu
+    /// without interference from game sprites and then return
+    /// to the main game, restoring game sprites on screen without having to reinitialize each sprite.
+    pub fn hide_sprites_push(&mut self) {
+        self.sprite_visibility_stack
+            .push(self.oam_occupied_list.clone());
+        for (slot, is_occupied) in self.oam_occupied_list.iter().enumerate() {
+            if *is_occupied {
+                let mut attrs = oam::read_obj_attributes(slot).unwrap();
+                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
+                oam::write_obj_attributes(slot, attrs);
+            }
         }
-        self.write_obj_attributes(attrs);
     }
 
-    /// Gets the visibility of the sprite.
-    pub fn get_visibility(&self) -> bool {
-        let attrs = self.read_obj_attributes();
-        if attrs.attr0.obj_rendering() != oam::ObjectRender::Disabled {
-            return true;
+    /// Restore which sprites are live on an internal stack.
+    /// If `hide_sprites_push()` was not called beforehand this will panic.
+    ///
+    /// This is very useful to, for example, display a sprite-based menu
+    /// without interference from game sprites and then return
+    /// to the main game, restoring game sprites on screen without having to reinitialize each sprite.
+    pub fn show_sprites_pop(&mut self) {
+        self.oam_occupied_list = self.sprite_visibility_stack.pop().unwrap();
+        for (slot, is_occupied) in self.oam_occupied_list.iter().enumerate() {
+            if *is_occupied {
+                let mut attrs = oam::read_obj_attributes(slot).unwrap();
+                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Normal);
+                oam::write_obj_attributes(slot, attrs);
+            } else {
+                let mut attrs = oam::read_obj_attributes(slot).unwrap();
+                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
+                oam::write_obj_attributes(slot, attrs);
+            }
         }
-        return false;
-    }
-
-    /// Sets the X position of the sprite.
-    ///
-    /// # Safety
-    ///
-    /// The position is not checked to be in bounds.
-    pub fn set_x_pos(&self, pos: u16) {
-        let mut attrs = self.read_obj_attributes();
-        attrs.attr1 = attrs.attr1.with_col_coordinate(pos);
-        self.write_obj_attributes(attrs);
-    }
-
-    /// Sets the Y position of the sprite.
-    ///
-    /// # Safety
-    ///
-    /// The position is not checked to be in bounds.
-    pub fn set_y_pos(&self, pos: u16) {
-        let mut attrs = self.read_obj_attributes();
-        attrs.attr0 = attrs.attr0.with_row_coordinate(pos);
-        self.write_obj_attributes(attrs);
     }
 }
-
-// TODO: impl Drop for HWSpriteHandle {} (currently causes a VRAM leak)

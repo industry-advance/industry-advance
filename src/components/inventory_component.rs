@@ -5,10 +5,11 @@ use hashbrown::hash_map::HashMap;
 use twox_hash::XxHash64;
 
 use alloc::vec::Vec;
-use core::hash::BuildHasherDefault;
 use core::fmt;
+use core::hash::BuildHasherDefault;
 
 /// Describes an inventory.
+#[derive(Debug, Clone)]
 pub struct InventoryComponent {
     /* Kind of items to accept. If `None`, all items are accepted.
     If empty, no kind of item is accepted. */
@@ -16,7 +17,7 @@ pub struct InventoryComponent {
     // Amount of free space remaining
     free: usize,
     // Actual inventory contents
-    pub contents: HashMap<Item, usize, BuildHasherDefault<XxHash64>>,
+    contents: HashMap<Item, usize, BuildHasherDefault<XxHash64>>,
 }
 
 // Metadata of ItemTransaction
@@ -37,13 +38,18 @@ impl InventoryComponent {
         };
     }
 
+    /// Gets a listing of the inventory contents without removing anything.
+    pub fn peek(&self) -> &HashMap<Item, usize, BuildHasherDefault<XxHash64>> {
+        return &self.contents;
+    }
+
     /// Inserts the given quantity of given item.
     /// Returns an `InventoryError` if space is insufficient.
     pub fn insert(&mut self, item: Item, quantity: usize) -> Result<(), InventoryError> {
         // Check that we have space
         if (self.free as i32 - quantity as i32) < 0 {
             if self.free > 0 {
-                return Err(InventoryError::PartialTransfer (self.free));
+                return Err(InventoryError::PartialTransfer(self.free));
             }
             return Err(InventoryError::Full);
         }
@@ -108,19 +114,26 @@ pub enum InventoryError {
 }
 
 impl fmt::Display for InventoryError {
-    fn fmt (&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InventoryError::*;
         match self {
-            PartialTransfer(amount) => write!(f, "InventoryError: Only {} items could be transferred", amount),
+            PartialTransfer(amount) => write!(
+                f,
+                "InventoryError: Only {} items could be transferred",
+                amount
+            ),
             Full => write!(f, "InventoryError: Inventory is full"),
             RejectedItemType => write!(f, "InventoryError: Item is not in whitelist"),
-            InsufficientItems => write!(f, "InventoryError: Inventory does not have the required items"),
+            InsufficientItems => write!(
+                f,
+                "InventoryError: Inventory does not have the required items"
+            ),
         }
     }
 }
 
 impl fmt::Debug for InventoryError {
-    fn fmt (&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return <InventoryError as fmt::Display>::fmt(&self, f);
     }
 }

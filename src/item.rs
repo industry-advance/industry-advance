@@ -1,3 +1,5 @@
+use crate::sprite::HWSpriteSize;
+
 use core::fmt;
 
 /// An item is something that can exist in an inventory and has an associated sprite.
@@ -23,9 +25,12 @@ pub enum Item {
     Pyratite,
     Metaglass,
 }
+// All item sprites must be 16x16 in size.
+pub const ITEM_SPRITE_SIZE: HWSpriteSize = HWSpriteSize::SixteenBySixteen;
 
 impl Item {
     /// Returns the filename of the item's sprite.
+
     pub fn to_sprite_name(self) -> &'static str {
         use Item::*;
         match self {

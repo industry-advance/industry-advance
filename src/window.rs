@@ -1,17 +1,25 @@
-//! This module contains a simple menu system for stuff like crafting, inventory etc.
+//! This module enables creation of windows for lists, menus etc.
 
+use crate::components::InventoryComponent;
+use crate::item::{Item, ITEM_SPRITE_SIZE};
 use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_HEIGHT_TILES, SCREEN_WIDTH};
 use crate::shared_constants::{WINDOW_0_SCREENBLOCK, WINDOW_1_SCREENBLOCK};
 use crate::shared_types::Background;
-use crate::text::TextEngine;
+use crate::sprite::{HWSpriteAllocator, HWSpriteHandle, HWSpriteSize};
+use crate::text::{TextEngine, CHARA_SIZE_IN_PX};
 use crate::{debug_log, debug_log::Subsystems};
 
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::convert::AsRef;
 use core::fmt::Write;
 
 use gba::io::{display, keypad, window};
 
+// TODO: Consider lazy_static-ing these or so to get rid of the unsafe blocks
 static mut WINDOW_0_TAKEN: bool = false;
 static mut WINDOW_1_TAKEN: bool = false;
+
 /// Which window this is
 enum WindowNum {
     Zero,
@@ -124,11 +132,119 @@ impl Window {
         self.bg.set_visible(false);
     }
 
+    /// Make the window display sprites.
+    fn enable_sprites(&self) {
+        match self.num {
+            WindowNum::Zero => {
+                window::WININ.write(window::WININ.read().with_win0_obj(true));
+            }
+            WindowNum::One => {
+                window::WININ.write(window::WININ.read().with_win1_obj(true));
+            }
+        }
+    }
+
+    /// Make the window not display sprites.
+    fn disable_sprites(&self) {
+        match self.num {
+            WindowNum::Zero => {
+                window::WININ.write(window::WININ.read().with_win0_obj(false));
+            }
+            WindowNum::One => {
+                window::WININ.write(window::WININ.read().with_win1_obj(false));
+            }
+        }
+    }
+
+    /// Display the contents of the given Inventory in the window.
+    pub fn make_inventory_listing(
+        &mut self,
+        inv: &InventoryComponent,
+        sprite_alloc: &mut HWSpriteAllocator,
+    ) {
+        let items: Vec<(&Item, &usize)> = inv.peek().iter().collect();
+        // TODO: Sort the item list alphabetically based on item name (blocked on lexical-sort no_std support)
+        let entries: Vec<(String, &str, HWSpriteSize)> = items
+            .iter()
+            .map(|item| {
+                (
+                    format!("{}: {}", item.0, item.1),
+                    item.0.to_sprite_name(),
+                    ITEM_SPRITE_SIZE,
+                )
+            })
+            .collect();
+        self.make_sprite_list("Inventory", entries.as_slice(), sprite_alloc);
+    }
+    /// Create a list of text and sprites to the right of the text.
+    /// This will block until the player presses "A" or "Start".
+    /// Note that all other sprites will be invisible while the list is open.
+    /// The entries are given in a (description, sprite filename, sprite size) form.
+    /// Internally, the sprites are allocated and disposed of once the window is closed.
+    pub fn make_sprite_list<S: AsRef<str>, T: AsRef<str>, U: AsRef<str>>(
+        &mut self,
+        title: S,
+        entries: &[(T, U, HWSpriteSize)],
+        sprite_alloc: &mut HWSpriteAllocator,
+    ) {
+        self.text.clear();
+        // TODO: Scrolling
+        // Write title (TODO: Center)
+        writeln!(&mut self.text, "{}", title.as_ref()).unwrap();
+        self.enable_sprites();
+        // Hide all the other sprites
+        sprite_alloc.hide_sprites_push();
+        let mut sprite_handles: Vec<HWSpriteHandle> = Vec::new();
+        // Now we plot all sprites and their descriptions
+        for (desc, sprite, size) in entries {
+            // Sprite to the left, text to the right
+            let (cursor_x, cursor_y) = self.text.get_cursor_pos();
+
+            let sprite_handle = sprite_alloc.alloc_from_fs_file(sprite.as_ref(), *size);
+            // Put the sprite as the first element on a new line
+            sprite_handle.set_x_pos(0);
+            sprite_handle.set_y_pos((cursor_y) as u16);
+            sprite_handle.set_visibility(true);
+            sprite_handles.push(sprite_handle);
+
+            // Followed by the description text
+            let (sprite_x_size, sprite_y_size) = size.to_size_in_px();
+            self.text.set_cursor_pos(
+                (cursor_x + sprite_x_size as u8) / CHARA_SIZE_IN_PX,
+                cursor_y / CHARA_SIZE_IN_PX,
+            );
+            write!(&mut self.text, "{}", desc.as_ref()).unwrap();
+
+            // Move the cursor onto the next line not used by the sprite
+            self.text.set_cursor_pos(
+                0,
+                ((sprite_y_size as u8 / CHARA_SIZE_IN_PX) + (cursor_y / CHARA_SIZE_IN_PX)),
+            );
+        }
+
+        // Wait for player to press "A" or "Start"
+        debug_log!(Subsystems::Menu, "Waiting for player to dismiss list");
+        loop {
+            let keys = keypad::read_key_input();
+            if keys.a() || keys.start() {
+                break;
+            }
+        }
+
+        // Cleanup
+        debug_log!(Subsystems::Menu, "List dismissed, cleaning up");
+        self.disable_sprites();
+        for handle in sprite_handles {
+            sprite_alloc.free(handle);
+        }
+        sprite_alloc.show_sprites_pop(); // Restore all the other sprite's visibility
+    }
+
     /// Create a text-based menu, and return the index of the choice the player picked
-    pub fn make_menu(&mut self, title: &str, menu_entries: &[&str]) -> usize {
+    pub fn make_text_menu(&mut self, title: &str, menu_entries: &[&str]) -> usize {
         // Redraws the cursor
         fn update_menu(text: &mut TextEngine, menu_entries: &[&str], cursor_pos: u8) {
-            debug_log!(Subsystems::Menu, "Updating");
+            debug_log!(Subsystems::Menu, "Updating text-based menu");
             // Remove the cursor from other positions
             for (i, _) in menu_entries[0..(SCREEN_HEIGHT_TILES - 1)]
                 .iter()
@@ -146,7 +262,6 @@ impl Window {
         let mut current_selection = 0;
 
         writeln!(&mut self.text, "{}", title).unwrap();
-        debug_log!(Subsystems::Menu, "Foo");
         // FIXME: Implement scrolling so that more stuff fits on screen
         // Until that happens, we only show as many entries as can fit
         for (i, entry) in menu_entries[0..(SCREEN_HEIGHT_TILES - 1)]
@@ -182,7 +297,6 @@ impl Window {
                 // Unless we're at the very bottom
                 if current_selection == SCREEN_HEIGHT_TILES - 2 {
                     current_selection = 0;
-                    debug_log!(Subsystems::Menu, "Moving down");
                 } else {
                     current_selection += 1;
                 }
@@ -203,9 +317,10 @@ impl Window {
 impl Drop for Window {
     fn drop(&mut self) {
         self.hide();
+        self.text.clear();
         /* Modifying a static mut is unsafe.
         However, we can do that here because this function isn't called from an interrupt handler,
-        so it's not reentrant and due to the single-core CPU a drop call must always complete before the next one starts. */
+        so it's not reentrant and due to the single-core CPU and no threads a drop call must always complete before the next one starts. */
         unsafe {
             use WindowNum::*;
             match &self.num {

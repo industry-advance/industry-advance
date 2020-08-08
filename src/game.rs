@@ -1,16 +1,13 @@
-use crate::components::{
-    component_utils::*, BuilderComponent, InputComponent, MovementComponent, PositionComponent,
-    SpriteComponent,
-};
+use crate::components::{component_utils::*, *};
 use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
-use crate::menu::Window;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
 };
+use crate::window::Window;
 
 use crate::FS;
 
@@ -78,7 +75,7 @@ impl Game {
         let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
         let mut win_menu = Window::new();
         win_menu.show();
-        let choice_idx = win_menu.make_menu("Choose a map", &map_names);
+        let choice_idx = win_menu.make_text_menu("Choose a map", &map_names);
         drop(win_menu);
         let map_entry = &maps.maps[choice_idx];
         // Create a map
@@ -186,6 +183,14 @@ impl Game {
                 )
                 .unwrap();
 
+                // Move the inventory component to the cursor
+                move_component::<InventoryComponent>(
+                    self.player_id,
+                    self.cursor_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
                 // Copy the position component to the cursor
                 clone_component::<PositionComponent>(
                     self.player_id,
@@ -214,10 +219,6 @@ impl Game {
                 let handle = cursor_sprite_component.get_handle();
                 handle.set_x_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_X);
                 handle.set_y_pos(cursor::INITIAL_CURSOR_ONSCREEN_POS_Y);
-
-                // Cursor has to be made visible
-                let cursor_sprite_component = sprite_components.get_mut(self.cursor_id).unwrap();
-                let handle = cursor_sprite_component.get_handle();
                 handle.set_visibility(true);
             }
             TimeStopped => {
@@ -225,6 +226,14 @@ impl Game {
 
                 // Move the input component back to the player
                 move_component::<InputComponent>(
+                    self.cursor_id,
+                    self.player_id,
+                    &mut self.entities,
+                )
+                .unwrap();
+
+                // Move the inventory component back to the player
+                move_component::<InventoryComponent>(
                     self.cursor_id,
                     self.player_id,
                     &mut self.entities,

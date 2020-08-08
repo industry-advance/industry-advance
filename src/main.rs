@@ -41,12 +41,12 @@ mod ewram_alloc;
 mod game;
 mod item;
 mod map;
-mod menu;
 mod shared_constants;
 mod shared_types;
 mod sprite;
 mod systems;
 mod text;
+mod window;
 
 use debug_log::*;
 use game::Game;

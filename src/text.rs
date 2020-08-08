@@ -30,6 +30,8 @@ use core::hash::BuildHasherDefault;
 use core::str;
 
 const BG_WIDTH_TILES: usize = 32;
+/// The size of a single character. Useful to know for laying out graphics which accompany the text.
+pub const CHARA_SIZE_IN_PX: u8 = 8;
 /// Structure representing the text engine's current state.
 ///
 /// # SAFETY
@@ -74,6 +76,7 @@ impl TextEngine {
                 font_tiles.len() / 8
             );
         }
+
         // DMA transfer font tiles
         unsafe {
             DMA3::set_source(font_tiles.as_ptr());
@@ -86,12 +89,20 @@ impl TextEngine {
             );
         }
 
-        // TODO: Load colors other than black
-        let idx = palram::index_palram_bg_4bpp(0, 0);
-        idx.write(Color::from_rgb(31, 31, 31));
-        for i in 1..15 {
-            let idx = palram::index_palram_bg_4bpp(0, i);
-            idx.write(Color::from_rgb(0, 0, 0));
+        let pal_file = crate::FS
+            .get_file_data_by_name_as_u16_slice("font_sharedPal")
+            .unwrap();
+
+        if pal_file.len() > (TEXT_BG_PALETTE_END - TEXT_BG_PALETTE_START) {
+            panic!("Font palette too big");
+        }
+
+        for (i, color) in pal_file.iter().enumerate() {
+            let idx = palram::index_palram_bg_4bpp(
+                ((i + TEXT_BG_PALETTE_START) / 16) as u8,
+                ((i + TEXT_BG_PALETTE_START) % 16) as u8,
+            );
+            idx.write(Color(*color));
         }
 
         let mut engine = TextEngine {
@@ -148,6 +159,15 @@ impl TextEngine {
         self.cursor_y = y;
     }
 
+    /// Get the current (x, y) position of the cursor in pixels from the top-left screen corner.
+    /// Useful if you want to draw things other than text onto the BG as well.
+    pub fn get_cursor_pos(&self) -> (u8, u8) {
+        return (
+            self.cursor_x * CHARA_SIZE_IN_PX,
+            self.cursor_y * CHARA_SIZE_IN_PX,
+        );
+    }
+
     /// Puts selected character at current cursor position and advances it
     fn put_char_and_advance(&mut self, chara: char) {
         self.put_char(chara, self.cursor_x, self.cursor_y);
@@ -171,11 +191,21 @@ impl TextEngine {
         // Look up the glyph tile ID
         let tile_id = match self.char_to_tile_id.get(&chara) {
             Some(id) => id,
-            // TODO: Just print a black box instead
-            None => panic!("Attempt to print nonexistent glyph"),
+            // Return a default character, because crashing for this is a bit extreme
+            None => {
+                debug_log!(Text, "Character {} not in font, substituted with *", chara);
+                self.char_to_tile_id.get(&'*').unwrap()
+            }
         };
         debug_log!(Text, "Character {} has tile ID {}", chara, *tile_id);
         let glyph = TextScreenblockEntry::from_tile_id(*tile_id);
+
+        // Because grit has a bug which breaks the "generate palette at an offset" flag,
+        // we have to manually adjust each entry to use the text palbank.
+        // FIXME: Transition to nin10kit and remove this workaround
+        let text_palbank = (TEXT_BG_PALETTE_START / 16) as u16;
+        let glyph = glyph.with_palbank(text_palbank);
+
         // TODO: This cast should be abstracted away by the lib; submit a PR
         unsafe {
             let offset_in_sb: isize = (x as isize) + (y as isize * BG_WIDTH_TILES as isize);

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 
-
 """
 Script for converting assets to GBA-friendly formats
 """
@@ -36,14 +35,14 @@ from PIL import Image
 LOGFILE_NAME = "convert.log"
 LOGFILE = None
 
-def log(msg, header = "INFO"):
+
+def log(msg, header="INFO"):
     global LOGFILE_NAME
     global LOGFILE
 
     logstring = "[{}]: {}".format(header, msg)
-    #LOGFILE.write(logstring + "\n")
-    #LOGFILE.flush()
-    
+    # LOGFILE.write(logstring + "\n")
+    # LOGFILE.flush()
 
     print(logstring)
 
@@ -53,14 +52,19 @@ SPRITES_IN_DIRS = ["Mindustry/core/assets-raw/sprites/", "assets"]
 # Directories to ignore when converting sprites (for example, because they contain huge zone maps we don't need
 SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
-SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls"]
+SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls", "items"]
 
+# This is a temporary workaround for running out of palette space.
+# Once we get nin10kit and it's palette reduction support integrated
+# this will hopefully go away.
 CURRENTLY_USED_SPRITES: List[str] = [
     "containerTiles.png",
     "copper-wall.png",
     "cursor.png",
     "dart-ship.png",
     "mechanical-drill.png",
+    "item-copper.png",
+    "item-scrap.png",
 ]
 
 # Same for maps
@@ -85,8 +89,8 @@ def get_sprite_paths() -> List[str]:
             for name in files:
                 if name.endswith(".png") and name in CURRENTLY_USED_SPRITES:
                     sprite_paths.append(os.path.join(root, name))
-                #else:
-                    #print("Not used: " + name)
+                # else:
+                # print("Not used: " + name)
     print(sprite_paths)
     return sprite_paths
 
@@ -163,9 +167,10 @@ def convert_fonts():
     # NOTE: It's important that the insertion happens here, because the gbfs tool does not support appending
     subprocess.run(check=True, args=["gbfs", OUT_PATH, char_file])
     # Run grit to actually convert glyphs
-    # Text palette starts at 0
+    # Even though they share the BG palette, the palette offset feature seems broken.
+    # Therefore, we shift the palette later in the Rust code.
     subprocess.run(
-        "grit {} -ftg -fh! -p! -fa -tc -gT -pS -m! -mR! -oassets -Oassets -S font_shared -gB4".format(
+        "grit {} -ftg -fh! -p -fa -tc -pT0 -pS -m! -mR! -oassets -Oassets -Sfont_shared -gB4".format(
             img_file
         ),
         shell=True,
@@ -231,9 +236,9 @@ def convert_maps_via_grit(map_paths: List[Tuple[str, List[str]]]):
             )
         )
         # Run grit
-        # First 16 palette colors are reserved for text (hence -ps16)
+        # Last 16 palette colors are reserved for text (hence -pe)
         subprocess.run(
-            "grit {} -ps16 -pT16 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
+            "grit {} -pe239 -ftg -fh! -fa -gT -gS -pS -m -o{} -O{} -S {} -gB4".format(
                 all_fragment_paths, OUT_PATH, OUT_PATH, map_name
             ),
             shell=True,
@@ -344,7 +349,7 @@ def main():
 
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()
-    log("sprite_path: {}".format(sprite_paths),"SPRITES")
+    log("sprite_path: {}".format(sprite_paths), "SPRITES")
     rescaled_sprite_paths = rescale_sprites_if_needed(sprite_paths)
     padded_sprite_paths = pad_sprites_if_needed(rescaled_sprite_paths)
     convert_sprites(padded_sprite_paths)
