@@ -11,7 +11,7 @@
 #![feature(core_intrinsics)]
 // Test harness setup
 #![feature(custom_test_frameworks)]
-#![test_runner(crate::test_runner)]
+#![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_in_array_repeat_expressions)]
 // Nice-to-have features
@@ -23,9 +23,6 @@
 #[macro_use]
 extern crate alloc;
 
-#[cfg(test)]
-use ansi_rgb::green;
-
 use ansi_rgb::{red, Foreground};
 use gba::mgba::{MGBADebug, MGBADebugLevel};
 use gbfs_rs::GBFSFilesystem;
@@ -33,6 +30,8 @@ use gbfs_rs::GBFSFilesystem;
 extern crate arrayref;
 
 mod components;
+#[cfg(test)]
+mod test;
 #[macro_use]
 mod debug_log;
 mod atomics;
@@ -102,39 +101,4 @@ static ALLOCATOR: ewram_alloc::MyBigAllocator = ewram_alloc::MyBigAllocator;
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("allocation error: {:?}", layout)
-}
-
-// Custom testing framework (the standard one can't be used because it depends on std)
-#[cfg(test)]
-fn test_runner(tests: &[&dyn Fn()]) {
-    // Prepare memory allocator for tests that require dynamic allocation
-    unsafe {
-        ewram_alloc::create_new_block(ewram_alloc::EWRAM_BASE, ewram_alloc::EWRAM_SIZE);
-    }
-    gba::info!("[TEST RUNNER] Running {} tests", tests.len());
-    // Actually run tests
-    for test in tests {
-        test();
-    }
-    gba::info!("[TEST RUNNER] {}", "ALL TESTS DONE".fg(green()));
-
-    // Because mGBA has no feature to terminate emulation from within the game with a successful
-    // exit code, we have to use a hack here.
-    // We panic with a "magic string", and an external process looks for this string and exits with a
-    // successful exit code.
-    // Do not alter this string!
-    panic!("Tests ran successfully, this panic is just here to quit mGBA");
-}
-
-// This test doesn't actually test anything; it's just here to ensure the testing framework works
-#[test_case]
-fn should_always_pass() {
-    let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
-    writeln!(writer, "This test should always pass...")
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
-    assert_eq!(1, 1);
-    writeln!(writer, "{}", "[ok]".fg(green()))
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
 }

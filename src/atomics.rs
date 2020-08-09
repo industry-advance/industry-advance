@@ -1,11 +1,7 @@
 // TODO: This should probably be upstreamed into the gba crate
 
 #[cfg(test)]
-use ansi_rgb::{green, Foreground};
-#[cfg(test)]
-use core::fmt::Write;
-#[cfg(test)]
-use gba::mgba::*;
+use crate::test::test;
 
 use core::intrinsics;
 use gba::io::irq;
@@ -85,28 +81,25 @@ pub unsafe extern "C" fn __sync_synchronize() {
     // We don't have a memory barrier, ignore
 }
 
-// This test locks and unlocks a mutex, just to make sure that stuff builds.
+/// This test locks and unlocks a mutex, just to make sure that stuff builds.
 #[test_case]
-fn mutex_test() {
-    let mut writer = MGBADebug::new().expect("Failed to acquire MGBA debug writer");
-    writeln!(writer, "Creating and locking a mutex...")
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
-
-    use alloc::string::String;
-    use spinning_top::Spinlock;
-    let data = String::from("Hello");
-    let spinlock = Spinlock::new(data);
-    // Lock the spinlock to get a mutex guard for the data
-    let mut locked_data = spinlock.lock();
-    // The guard implements the `Deref` trait, so we can use it like a `&String`
-    assert_eq!(locked_data.as_str(), "Hello");
-    // It also implements `DerefMut` so mutation is possible too. This is safe
-    // because the spinlock ensures mutual exclusion
-    locked_data.make_ascii_uppercase();
-    assert_eq!(locked_data.as_str(), "HELLO");
-
-    writeln!(writer, "{}", "[ok]".fg(green()))
-        .expect("Failed to write to MGBA debug message register");
-    writer.send(MGBADebugLevel::Info);
+fn test_atomics_mutex() {
+    test(
+        &|| {
+            use alloc::string::String;
+            use spinning_top::Spinlock;
+            let data = String::from("Hello");
+            let spinlock = Spinlock::new(data);
+            // Lock the spinlock to get a mutex guard for the data
+            let mut locked_data = spinlock.lock();
+            // The guard implements the `Deref` trait, so we can use it like a `&String`
+            assert_eq!(locked_data.as_str(), "Hello");
+            // It also implements `DerefMut` so mutation is possible too. This is safe
+            // because the spinlock ensures mutual exclusion
+            locked_data.make_ascii_uppercase();
+            assert_eq!(locked_data.as_str(), "HELLO");
+        },
+        "test_atomics_mutex",
+        "ensure that we can at least use a mutex",
+    );
 }
