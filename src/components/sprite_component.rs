@@ -15,7 +15,9 @@ impl SpriteComponent {
         y_pos: u16,
         is_visible: bool,
     ) -> SpriteComponent {
-        let sprite_handle = alloc.alloc_from_fs_file(sprite_filename, sprite_size);
+        let sprite_handle = alloc
+            .alloc_from_fs_file(sprite_filename, sprite_size)
+            .unwrap();
         sprite_handle.set_x_pos(x_pos);
         sprite_handle.set_y_pos(y_pos);
         sprite_handle.set_visibility(is_visible);

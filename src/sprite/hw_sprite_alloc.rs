@@ -91,23 +91,23 @@ impl HWSpriteAllocator {
     /// Allocate the given sprite in VRAM from data contained in the file with the given name.
     /// A sprite size has to be supplied because several different shapes of sprites share the same size.
     /// TODO: Store sprite size info in the filesystem, so there's no need to keep track of it in code
-    ///
-    /// Panics if the file doesn't exist.
     pub fn alloc_from_fs_file(
         &mut self,
         filename: &str,
         sprite_size: HWSpriteSize,
-    ) -> HWSpriteHandle {
-        let sprite_data = crate::FS
-            .get_file_data_by_name_as_u32_slice(filename)
-            .expect("Failed to find sprite with given name in filesystem");
-        return self.alloc(sprite_data, sprite_size);
+    ) -> Result<HWSpriteHandle, HWSpriteAllocError> {
+        match crate::FS.get_file_data_by_name_as_u32_slice(filename) {
+            Ok(sprite_data) => return self.alloc(sprite_data, sprite_size),
+            Err(gbfs_err) => return Err(HWSpriteAllocError::File(gbfs_err)),
+        }
     }
 
     /// Allocate the given sprite in VRAM.
-    ///
-    /// This will panic if insufficient space is available or too many sprites are already active.
-    pub fn alloc(&mut self, sprite_data: &[u32], sprite_size: HWSpriteSize) -> HWSpriteHandle {
+    pub fn alloc(
+        &mut self,
+        sprite_data: &[u32],
+        sprite_size: HWSpriteSize,
+    ) -> Result<HWSpriteHandle, HWSpriteAllocError> {
         // Check whether the sprite is already in VRAM by comparing it's hash
         // FIXME: I think we don't correctly understand the Hasher interface, as identical
         // sprites return different hashes. Maybe using by_address is part of the solution.
@@ -134,9 +134,7 @@ impl HWSpriteAllocator {
 
             // Find first spot with enough contiguous free blocks to hold the sprite
             let num_32b_blocks = sprite_size.to_num_of_32_byte_blocks();
-            starting_vram_tile_id = self
-                .find_contiguous_free_blocks(num_32b_blocks)
-                .expect("No contiguous free block of VRAM available to allocate hardware sprite");
+            starting_vram_tile_id = self.find_contiguous_free_blocks(num_32b_blocks)?;
 
             debug_log!(
                 Subsystems::HWSprite,
@@ -160,26 +158,26 @@ impl HWSpriteAllocator {
         }
 
         // Assign a slot in OAM
-        let oam_slot = self.find_free_oam_slot();
+        let oam_slot = self.find_free_oam_slot()?;
         self.oam_occupied_list[oam_slot] = true;
         let (size, shape) = sprite_size.to_obj_size_and_shape();
 
-        self.allocate_oam_slot(
+        self.prepare_oam_slot(
             (starting_vram_tile_id * 2).try_into().unwrap(),
             oam_slot,
             size,
             shape,
         );
-        return HWSpriteHandle {
+        return Ok(HWSpriteHandle {
             sprite_size,
             starting_block: starting_vram_tile_id,
             oam_slot,
             data_hash: sprite_hash,
-        };
+        });
     }
 
     /// Prepares a slot in OAM for the sprite.
-    fn allocate_oam_slot(
+    fn prepare_oam_slot(
         &self,
         starting_vram_tile_id: u16,
         oam_slot: usize,
@@ -211,16 +209,16 @@ impl HWSpriteAllocator {
     }
     /// Find a free slot in OAM.
     /// If none are available, panic.
-    fn find_free_oam_slot(&self) -> usize {
+    fn find_free_oam_slot(&self) -> Result<usize, HWSpriteAllocError> {
         match self.oam_occupied_list.iter().position(|&x| !x) {
-            Some(pos) => pos,
-            None => panic!("Attempt to create sprite when OAM is full"),
+            Some(pos) => Ok(pos),
+            None => return Err(HWSpriteAllocError::OAMFull),
         }
     }
 
     /// Return the index of the beginning of the first area in the allocation map
     /// with sufficient space.
-    fn find_contiguous_free_blocks(&self, num_blocks: usize) -> Option<usize> {
+    fn find_contiguous_free_blocks(&self, num_blocks: usize) -> Result<usize, HWSpriteAllocError> {
         for (i, (_refcount, block)) in self.allocation_map.iter().enumerate() {
             if *block == SpriteBlockState::Unused {
                 let mut free_blocks: usize = 1;
@@ -232,11 +230,11 @@ impl HWSpriteAllocator {
                     }
                 }
                 if free_blocks >= num_blocks {
-                    return Some(i);
+                    return Ok(i);
                 }
             }
         }
-        return None;
+        return Err(HWSpriteAllocError::VRAMFull);
     }
 
     /// Drop the allocation of the given sprite.
@@ -298,13 +296,16 @@ impl HWSpriteAllocator {
     }
 
     /// Restore which sprites are live on an internal stack.
-    /// If `hide_sprites_push()` was not called beforehand this will panic.
+    /// If `hide_sprites_push()` was not called beforehand this will error.
     ///
     /// This is very useful to, for example, display a sprite-based menu
     /// without interference from game sprites and then return
     /// to the main game, restoring game sprites on screen without having to reinitialize each sprite.
-    pub fn show_sprites_pop(&mut self) {
-        self.oam_occupied_list = self.sprite_visibility_stack.pop().unwrap();
+    pub fn show_sprites_pop(&mut self) -> Result<(), HWSpriteAllocError> {
+        match self.sprite_visibility_stack.pop() {
+            Some(list) => self.oam_occupied_list = list,
+            None => return Err(HWSpriteAllocError::SpriteVisibilityStackEmpty),
+        }
         for (slot, is_occupied) in self.oam_occupied_list.iter().enumerate() {
             if *is_occupied {
                 let mut attrs = oam::read_obj_attributes(slot).unwrap();
@@ -316,5 +317,6 @@ impl HWSpriteAllocator {
                 oam::write_obj_attributes(slot, attrs);
             }
         }
+        return Ok(());
     }
 }

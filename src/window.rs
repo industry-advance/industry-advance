@@ -200,7 +200,9 @@ impl Window {
             // Sprite to the left, text to the right
             let (cursor_x, cursor_y) = self.text.get_cursor_pos();
 
-            let sprite_handle = sprite_alloc.alloc_from_fs_file(sprite.as_ref(), *size);
+            let sprite_handle = sprite_alloc
+                .alloc_from_fs_file(sprite.as_ref(), *size)
+                .unwrap();
             // Put the sprite as the first element on a new line
             sprite_handle.set_x_pos(0);
             sprite_handle.set_y_pos((cursor_y) as u16);
@@ -218,7 +220,7 @@ impl Window {
             // Move the cursor onto the next line not used by the sprite
             self.text.set_cursor_pos(
                 0,
-                ((sprite_y_size as u8 / CHARA_SIZE_IN_PX) + (cursor_y / CHARA_SIZE_IN_PX)),
+                (sprite_y_size as u8 / CHARA_SIZE_IN_PX) + (cursor_y / CHARA_SIZE_IN_PX),
             );
         }
 
@@ -237,7 +239,7 @@ impl Window {
         for handle in sprite_handles {
             sprite_alloc.free(handle);
         }
-        sprite_alloc.show_sprites_pop(); // Restore all the other sprite's visibility
+        sprite_alloc.show_sprites_pop().unwrap(); // Restore all the other sprite's visibility
     }
 
     /// Create a text-based menu, and return the index of the choice the player picked

@@ -11,13 +11,14 @@
 //! * Consider upstreaming to GBA crate.
 //! * Writes to OAM should only happen on VBlank, we should implement some sort of shadow OAM and copy on interrupt.
 
+mod error;
 mod hw_sprite;
 mod hw_sprite_alloc;
 mod hw_sprite_handle;
 mod sprite_dma;
+pub use error::HWSpriteAllocError;
 pub use hw_sprite::HWSpriteSize;
 pub use hw_sprite_alloc::HWSpriteAllocator;
 pub use hw_sprite_handle::HWSpriteHandle;
-
 #[cfg(test)]
 mod hw_sprite_alloc_test;
