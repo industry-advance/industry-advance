@@ -14,9 +14,9 @@ gba = {git = "https://github.com/rust-console/gba" } # We use features that aren
 ansi_rgb = "*"
 arrayref = "0.3"
 arrayvec = {version = "0.5.1", default-features = false}
-fixed = "1.0"
+fixed = "1"
 twox-hash = {version = "1", default-features = false}
-hashbrown = {version = "0.8.0", default-features = false, features = ["inline-more"]}
+hashbrown = {version = "0.8.2", default-features = false, features = ["inline-more"]}
 tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
 gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}
 

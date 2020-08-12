@@ -1,6 +1,7 @@
 let
   sources = import ./nix/sources.nix;
   packageList = import ./nix/packagelist.nix;
+  niv = import sources.niv { inherit sources; };
   nixpkgs = import sources.nixpkgs { };
   shellPackages = packageList.nixPackages ++ [
     # Dev tools for python scripts
@@ -12,5 +13,8 @@ let
 
     # Debugging
     nixpkgs.gdb-multitarget
+
+    # Nix maintenance
+    niv.niv
   ];
 in nixpkgs.mkShell { buildInputs = shellPackages; }

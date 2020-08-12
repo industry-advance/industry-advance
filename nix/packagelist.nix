@@ -32,6 +32,7 @@ in {
     nixpkgs.python37
     nixpkgs.python37Packages.pillow
     nixpkgs.python37Packages.fonttools
+    nixpkgs.python37Packages.ffmpeg-python
     py2jdbc
     dataclasses-json
   ];
