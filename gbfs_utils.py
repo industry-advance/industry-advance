@@ -4,14 +4,16 @@ This module contains some convenience functions for working with GBFS archives.
 
 import tempfile
 import pathlib
+from pathlib import Path
 import os
 import shutil
 import subprocess
 
 
-def insert(gbfs_path: str, file_path: str):
+def insert(gbfs_path: Path, file_path: Path):
     """
     Insert a file into the given, preexisting GBFS archive.
+    Given paths must be absolute.
     """
     # The GBFS distribution provides no tooling for appending files to an archive,
     # so we have to extract and repack instead.

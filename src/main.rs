@@ -42,6 +42,7 @@ mod item;
 mod map;
 mod shared_constants;
 mod shared_types;
+mod sound;
 mod sprite;
 mod systems;
 mod text;

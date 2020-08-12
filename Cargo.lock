@@ -128,6 +128,7 @@ dependencies = [
  "ansi_rgb",
  "arrayref",
  "arrayvec",
+ "byte-slice-cast",
  "fixed",
  "gba",
  "gbfs_rs",
@@ -137,6 +138,7 @@ dependencies = [
  "serde_json",
  "spinning_top 0.2.1",
  "tiny_ecs",
+ "tiny_riff",
  "twox-hash",
 ]
 
@@ -317,6 +319,11 @@ dependencies = [
  "rustc-hash",
  "vec_map",
 ]
+
+[[package]]
+name = "tiny_riff"
+version = "0.1.0"
+source = "git+https://github.com/industry-advance/tiny_riff#c67d8f298379a2b5fc79b03701f4eb63ba8c8817"
 
 [[package]]
 name = "twox-hash"

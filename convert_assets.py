@@ -17,12 +17,16 @@ import preparefont
 # This module converts Mindustry's maps to a more suitable format
 import parse_save
 
+# This module converts audio to a format usable by the GBA.
+import sound_convert
+
 # This module makes it easier to deal with the GBFS format, with tooling that is
 # surprisingly crippled given the format's simplicity.
 import gbfs_utils
 
 import os
 import pathlib
+from pathlib import Path
 import subprocess
 import tempfile
 
@@ -53,6 +57,13 @@ SPRITES_IN_DIRS = ["Mindustry/core/assets-raw/sprites/", "assets"]
 SPRITES_IGNORE_SUBDIRS: List[str] = ["zones", "editor", "ui", "effects"]
 # Direcoties containing assets which need to be rescaled (halved in resolution) in order to fit well on a GBA screen
 SPRITES_RESIZE_SUBDIRS: List[str] = ["blocks", "mechs", "walls", "items"]
+
+# Directories containing sounds to be included in archive
+SOUND_IN_DIRS = [
+    Path("Mindustry/core/assets/sounds/").resolve(),
+    # TODO: Reenable once we figure out how to make them fit
+    # Path("Mindustry/core/assets/music/").resolve(),
+]
 
 # This is a temporary workaround for running out of palette space.
 # Once we get nin10kit and it's palette reduction support integrated
@@ -337,6 +348,14 @@ def convert_maps():
     gbfs_utils.insert(OUT_PATH, "maps.json")
 
 
+def convert_sounds():
+    """
+    Converts sound files to a format the GBA can play and adds them to
+    the archive.
+    """
+    sound_convert.sound_dirs_to_gbfs(SOUND_IN_DIRS, Path(OUT_PATH).resolve())
+
+
 def main():
     global LOGFILE_NAME
     global LOGFILE
@@ -346,6 +365,9 @@ def main():
 
     print("----Converting font...----")
     convert_fonts()
+
+    print("----Converting sounds...----")
+    convert_sounds()
 
     print("----Converting sprites...----")
     sprite_paths = get_sprite_paths()

@@ -19,8 +19,9 @@ twox-hash = {version = "1", default-features = false}
 hashbrown = {version = "0.8.2", default-features = false, features = ["inline-more"]}
 tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
 gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}
-
+tiny_riff = {git = "https://github.com/industry-advance/tiny_riff"}
 serde = {version = "1.0", default-features = false, features = ["derive"]}
 serde_json = {version = "1.0", default-features = false, features = ["alloc"]}
 spinning_top = "0.2.1"
 linked_list_allocator = "0.8.4"
+byte-slice-cast = {version = "0.3.5", default-features = false}
