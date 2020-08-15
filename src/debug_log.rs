@@ -23,6 +23,8 @@ pub enum Subsystems {
     Text,
     Map,
     Menu,
+    Interrupt,
+    Sound,
 }
 
 impl Subsystems {
@@ -40,6 +42,8 @@ impl Subsystems {
             Text => "TEXT",
             Map => "MAP",
             Menu => "MENU",
+            Interrupt => "INTERRUPT",
+            Sound => "SOUND",
         }
     }
 }

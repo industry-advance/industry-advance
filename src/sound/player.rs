@@ -1,12 +1,16 @@
 use super::wave::*;
+use crate::debug_log::Subsystems::Sound;
+use crate::interrupt;
 use crate::FS;
 
-use gba::io::{dma::*, sound, timers};
+use core::convert::TryInto;
+
+use gba::io::{dma::*, irq, sound, timers};
+use gbfs_rs::GBFSError;
 use spinning_top::{const_spinlock, Spinlock};
 
 static PLAYER_EXISTS: Spinlock<bool> = const_spinlock(false);
 
-// TODO: Make variable/read from wav
 const SOUND_SAMPLE_RATE: u32 = 8000;
 const CPU_CYCLES_PER_SEC: u32 = 16777216;
 const TIMER_MAX_VALUE: u32 = u16::MAX as u32;
@@ -35,6 +39,11 @@ impl Player {
     ///
     /// Note that this function does not block until playback finishes, it returns as soon as the HW is configured.
     fn play_raw(&self, samples: &[u32], sample_rate: u32) {
+        // Before we do anything, make sure that interrupts are enabled
+        // so that we can stop playback later.
+        if irq::IME.read() == irq::IrqEnableSetting::IRQ_NO {
+            panic!("Sound playback requires interrupts to be enabled")
+        }
         // Master sound enable: has to be set before any of the registers are usable
         sound::SOUNDCNT_X
             .write(sound::SoundMasterSetting::new().with_psg_fifo_master_enabled(true));
@@ -62,6 +71,32 @@ impl Player {
                 .with_dma_sound_a_reset_fifo(true),
         );
 
+        // Configure timer 1 to notify us when playback is over so we can shut it off
+        //        REG_TM1D = 65536 - sampleLength;
+        timers::TM1CNT_H.write(
+            timers::TimerControlSetting::new()
+                .with_tick_rate(timers::TimerTickRate::Cascade)
+                .with_overflow_irq(true)
+                .with_enabled(true),
+        );
+        timers::TM1CNT_L.write(
+            (TIMER_MAX_VALUE - (samples.len() as u32))
+                .try_into()
+                .unwrap(),
+        );
+
+        // Sanity check: Ensure nothing else is using the timer
+        if !irq::IE.read().timer1() {
+            debug_log!(
+                Sound,
+                "Registered ISR to stop playback after {} samples",
+                samples.len()
+            );
+            interrupt::set_timer1_handler(Some(&disable_playback_when_done_isr));
+        } else {
+            panic!("Something else is using timer1!");
+        }
+
         // Configure DMA 1 to continuously transfer samples from the buffer
         unsafe {
             DMA1::set_source(samples.as_ptr() as *const u32);
@@ -81,8 +116,6 @@ impl Player {
                     .with_enabled(true),
             );
         }
-
-        // TODO: Use timer 1 to stop playback when sound is over
     }
 
     /// Play the given rav file on channel A.
@@ -90,12 +123,11 @@ impl Player {
     /// File must be 8000Hz, 8 bit signed PCM.
     ///
     /// Note that this function does not block until playback finishes, it returns as soon as the HW is configured.
-    ///
-    /// This function currently panics if the file can't be opened,
-    /// TODO: proper error handling.
-    pub fn play_raw_file(&self, name: &str) {
-        let data = FS.get_file_data_by_name_as_u32_slice(name).unwrap();
+    pub fn play_raw_file(&self, name: &str) -> Result<(), GBFSError> {
+        debug_log!(Sound, "Playing file {}", name);
+        let data = FS.get_file_data_by_name_as_u32_slice(name)?;
         self.play_raw(data, SOUND_SAMPLE_RATE);
+        return Ok(());
     }
 
     /// Play the given wav file on channel A.
@@ -110,6 +142,12 @@ impl Player {
         return Ok(());
     }
 
+    /// Spin until the currently-playing sound finishes.
+    pub fn spin_until_playback_completes(&self) {
+        // The ISR that's run to end playback disables itself once it's fired.
+        while interrupt::timer1_isr_active() {}
+    }
+
     // TODO: Mixer
 }
 
@@ -118,4 +156,21 @@ impl Drop for Player {
         let mut exists = PLAYER_EXISTS.lock();
         *exists = false;
     }
+}
+
+/// An ISR to disable sound playback when timer1 fires.
+fn disable_playback_when_done_isr() {
+    // Disable sound playback
+    sound::SOUNDCNT_X.write(sound::SoundMasterSetting::new());
+    // Disable DMA1
+    unsafe {
+        DMA1::set_control(DMAControlSetting::new());
+    }
+    // Disable both timers
+    timers::TM0CNT_H.write(timers::TimerControlSetting::new());
+    timers::TM1CNT_H.write(timers::TimerControlSetting::new());
+    timers::TM0CNT_L.write(0);
+    timers::TM1CNT_L.write(0);
+    // We're only supposed to run once, disable ourselves
+    interrupt::set_timer1_handler(None);
 }

@@ -16,12 +16,27 @@ fn test_sound_player_init() {
 fn test_sound_playback() {
     test(
         &|| {
+            crate::interrupt::init();
             let player = Player::init();
-            player.play_raw_file("drill.wav");
+            player.play_raw_file("drill.wav").unwrap();
+            player.spin_until_playback_completes();
+            panic!("Done");
         },
         "test_sound_playback",
         "ensure playing sound works",
     );
 }
 
-// TODO: Test wave playback, parsing etc
+#[test_case]
+fn test_wave_playback() {
+    test(
+        &|| {
+            crate::interrupt::init();
+            let player = Player::init();
+            player.play_wav_file("drill.wav").unwrap();
+            player.spin_until_playback_completes();
+        },
+        "test_wave_playback",
+        "ensure playing a wave file works",
+    );
+}

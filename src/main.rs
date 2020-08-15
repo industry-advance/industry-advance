@@ -38,6 +38,7 @@ mod atomics;
 mod entities;
 mod ewram_alloc;
 mod game;
+mod interrupt;
 mod item;
 mod map;
 mod shared_constants;
