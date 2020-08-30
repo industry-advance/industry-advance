@@ -1,10 +1,6 @@
 let
   sources = import ./sources.nix;
   rust = import ./rust.nix { inherit sources; };
-  grit = import ./grit.nix { inherit sources; };
-  gba-tools = import ./gba-tools.nix { inherit sources; };
-  py2jdbc = import ./py2jdbc.nix { inherit sources; };
-  dataclasses-json = import ./dataclasses-json.nix { inherit sources; };
   nixpkgs = import sources.nixpkgs { };
 in {
   # List of packages which are needed both for testing and CI.
@@ -16,8 +12,8 @@ in {
     nixpkgs.gcc-arm-embedded
     nixpkgs.cacert
     nixpkgs.clippy
-    grit
-    gba-tools
+    (nixpkgs.callPackage ./pkgs/grit { })
+    (nixpkgs.callPackage ./pkgs/gba-tools { })
 
     # For running tests headlessly
     nixpkgs.mgba
@@ -29,11 +25,15 @@ in {
     nixpkgs.bash
 
     # Execution of python glue
-    nixpkgs.python37
-    nixpkgs.python37Packages.pillow
-    nixpkgs.python37Packages.fonttools
-    nixpkgs.python37Packages.ffmpeg-python
-    py2jdbc
-    dataclasses-json
+    nixpkgs.python38
+    nixpkgs.python38Packages.pillow
+    nixpkgs.python38Packages.fonttools
+    nixpkgs.python38Packages.ffmpeg-python
+    (nixpkgs.callPackage ./pkgs/py2jdbc {
+      pythonXXPackages = nixpkgs.python38Packages;
+    })
+    (nixpkgs.callPackage ./pkgs/dataclasses-json {
+      pythonXXPackages = nixpkgs.python38Packages;
+    })
   ];
 }

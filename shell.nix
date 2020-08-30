@@ -5,11 +5,11 @@ let
   nixpkgs = import sources.nixpkgs { };
   shellPackages = packageList.nixPackages ++ [
     # Dev tools for python scripts
-    nixpkgs.python37Packages.black
-    nixpkgs.python37Packages.flake8
-    nixpkgs.python37Packages.pydocstyle
-    nixpkgs.python37Packages.mypy
-    nixpkgs.python37Packages.ipython
+    nixpkgs.python38Packages.black
+    nixpkgs.python38Packages.flake8
+    nixpkgs.python38Packages.pydocstyle
+    nixpkgs.python38Packages.mypy
+    nixpkgs.python38Packages.ipython
 
     # Debugging
     nixpkgs.gdb-multitarget
