@@ -20,7 +20,6 @@ fn test_sound_playback() {
             let player = Player::init();
             player.play_raw_file("drill.wav").unwrap();
             player.spin_until_playback_completes();
-            panic!("Done");
         },
         "test_sound_playback",
         "ensure playing sound works",

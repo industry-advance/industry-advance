@@ -43,7 +43,7 @@ pub fn set_timer1_handler(f: Option<&'static dyn Fn()>) {
         }
         None => {
             debug_log!(Interrupt, "Disabling handler for timer1");
-            let flags = flags.with_timer1(false);
+            flags = flags.with_timer1(false);
         }
     }
     IE.write(flags);
