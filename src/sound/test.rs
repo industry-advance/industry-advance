@@ -18,7 +18,7 @@ fn test_sound_playback() {
         &|| {
             crate::interrupt::init();
             let player = Player::init();
-            player.play_raw_file("drill.wav").unwrap();
+            player.play_raw_file("drill.wav", 8000).unwrap();
             player.spin_until_playback_completes();
         },
         "test_sound_playback",

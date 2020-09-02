@@ -86,10 +86,7 @@ impl Wave<'_> {
             return Err(WaveError::UnsupportedSampleType);
         }
 
-        // FIXME: Figure out what's up with alignment
-
         // The header seems to be exactly 44 bytes large, meaning we can subslice that away to get at sound data
-        //let wave_data = &data[44..];
         let wave_data = &data_u32[(44 / 4)..];
         return Ok(Wave {
             sample_rate,

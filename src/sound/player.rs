@@ -9,9 +9,9 @@ use gba::io::{dma::*, irq, sound, timers};
 use gbfs_rs::GBFSError;
 use spinning_top::{const_spinlock, Spinlock};
 
+// The player has to be a singleton due to the hardware features in use.
 static PLAYER_EXISTS: Spinlock<bool> = const_spinlock(false);
 
-const SOUND_SAMPLE_RATE: u32 = 8000;
 const CPU_CYCLES_PER_SEC: u32 = 16777216;
 const TIMER_MAX_VALUE: u32 = u16::MAX as u32;
 
@@ -20,7 +20,9 @@ pub struct Player {}
 
 impl Player {
     /// Initializes the audio player.
-    /// As long as there's a `Player` instance active, you shouldn't touch DMA 1 or timer 0.
+    ///
+    /// As long as there's a `Player` instance active, you shouldn't touch DMA 1 or timers 0 and 1.
+    ///
     /// Also, only a single `Player` instance can be active at a time,
     /// trying to create more will lead to a panic by the constructor.
     pub fn init() -> Player {
@@ -49,7 +51,7 @@ impl Player {
             .write(sound::SoundMasterSetting::new().with_psg_fifo_master_enabled(true));
 
         // Configure sound timer initial value such that it overflows exactly when a sample is about to run out
-        timers::TM0CNT_L.write((TIMER_MAX_VALUE - (CPU_CYCLES_PER_SEC / SOUND_SAMPLE_RATE)) as u16);
+        timers::TM0CNT_L.write((TIMER_MAX_VALUE - (CPU_CYCLES_PER_SEC / sample_rate)) as u16);
         timers::TM0CNT_H.write(
             timers::TimerControlSetting::new()
                 // Count up by 1 each CPU cycle
@@ -118,15 +120,15 @@ impl Player {
         }
     }
 
-    /// Play the given rav file on channel A.
+    /// Play the given raw file on channel A.
     ///
-    /// File must be 8000Hz, 8 bit signed PCM.
+    /// File must be 8 bit signed PCM.
     ///
     /// Note that this function does not block until playback finishes, it returns as soon as the HW is configured.
-    pub fn play_raw_file(&self, name: &str) -> Result<(), GBFSError> {
-        debug_log!(Sound, "Playing file {}", name);
-        let data = FS.get_file_data_by_name_as_u32_slice(name)?;
-        self.play_raw(data, SOUND_SAMPLE_RATE);
+    pub fn play_raw_file(&self, file_name: &str, sample_rate: u32) -> Result<(), GBFSError> {
+        debug_log!(Sound, "Playing file {}", file_name);
+        let data = FS.get_file_data_by_name_as_u32_slice(file_name)?;
+        self.play_raw(data, sample_rate);
         return Ok(());
     }
 
