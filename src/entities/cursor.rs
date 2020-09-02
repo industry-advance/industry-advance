@@ -9,7 +9,7 @@ pub const INITIAL_CURSOR_ONSCREEN_POS_X: u16 = (SCREEN_WIDTH / 2) as u16;
 pub const INITIAL_CURSOR_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2) as u16;
 /// Adds a cursor to the ECS.
 /// The cursor accepts user input and the camera stays centered on it's sprite.
-pub(crate) fn add_cursor(
+pub fn add_cursor(
     entities: &mut Entities,
     sprite_alloc: &mut HWSpriteAllocator,
 ) -> Result<usize, ECSError> {

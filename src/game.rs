@@ -98,11 +98,6 @@ impl Game {
             .expect("Failed to initialize cursor entity");
         live_entity_ids.push(cursor_id);
 
-        // Initialize a copper wall for testing
-        let copper_wall_id = entities::add_copper_wall(&mut e, &mut sprite_allocator)
-            .expect("Failed to initialize copper wall entity");
-        live_entity_ids.push(copper_wall_id);
-
         // Put the player at the center of the screen
         let mut components = e.borrow_mut::<SpriteComponent>().unwrap();
         let player_sprite_handle = components.get_mut(player_id).unwrap().get_handle();

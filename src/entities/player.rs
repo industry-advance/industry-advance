@@ -13,7 +13,7 @@ pub const INITIAL_PLAYER_ONSCREEN_POS_Y: u16 = (SCREEN_HEIGHT / 2 - 32 / 2) as u
 const PLAYER_INVENTORY_CAPACITY: usize = 64;
 /// Adds a player to the ECS.
 /// The player accepts user input and the camera stays centered on it's sprite.
-pub(crate) fn add_player(
+pub fn add_player(
     entities: &mut Entities,
     sprite_alloc: &mut HWSpriteAllocator,
 ) -> Result<usize, ECSError> {

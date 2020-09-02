@@ -1,6 +1,8 @@
 use crate::components::{BuilderComponent, InputComponent};
 use crate::debug_log::*;
 
+use alloc::boxed::Box;
+
 use gba::io::keypad;
 use tiny_ecs::{ECSError, Entities};
 
@@ -34,8 +36,13 @@ impl InputSystem {
                     // Pass A button press to builder component, if available
                     // TODO: May need to debounce
                     if keys.a() {
-                        debug_log!(Subsystems::InputSystem, "A pressed");
-                        e_builder_component.build = true;
+                        debug_log!(Subsystems::InputSystem, "A pressed, building copper wall");
+                        e_builder_component.buildable =
+                            Some(Box::new(&crate::entities::CopperWall {}));
+                        e_builder_component.pos = Some((
+                            crate::shared_types::Coordinate::from_num(32),
+                            crate::shared_types::Coordinate::from_num(33),
+                        ));
                     }
                 }
                 if ecs.entity_contains::<InputComponent>(*id) {
