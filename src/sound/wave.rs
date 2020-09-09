@@ -50,47 +50,36 @@ impl From<byte_slice_cast::Error> for WaveError {
     }
 }
 
-/// `Wave` describes the structure of a wave file.
-pub(super) struct Wave<'a> {
-    /// The actual raw sample data, ready to be chucked into the GBA sound HW
-    pub audio: &'a [u32],
-    /// Samplerate, in Hz
-    pub sample_rate: u32,
-}
+/// Load from a GBFS file.
+/// Returns a tuple consisting of a subslice of PCM audio and it's sample rate,
+/// or an error.
+pub fn from_file(name: &str) -> Result<(&'static [u32], u32), WaveError> {
+    let data = FS.get_file_data_by_name(name)?;
+    let data_u32 = FS.get_file_data_by_name_as_u32_slice(name)?;
 
-impl Wave<'_> {
-    /// Load from a GBFS file.
-    pub fn from_file(name: &str) -> Result<Wave, WaveError> {
-        let data = FS.get_file_data_by_name(name)?;
-        let data_u32 = FS.get_file_data_by_name_as_u32_slice(name)?;
+    /*
+    Because we only care about a small subset of the metadata which is available at the beginning of the file in fixed offsets,
+    we don't use an actual RIFF parser here.
+    Instead, just reading at those fixed offsets is good enough for our use case.
+    */
 
-        /*
-        Because we only care about a small subset of the metadata which is available at the beginning of the file in fixed offsets,
-        we don't use an actual RIFF parser here.
-        Instead, just reading at those fixed offsets is good enough for our use case.
-        */
-
-        // Validate the the file's format is something we can work with
-        let format_type = u16::from_le_bytes([data[20], data[21]]);
-        // We only support PCM audio
-        if format_type != 1 {
-            return Err(WaveError::UnsupportedSampleType);
-        }
-        let num_chans = u16::from_le_bytes([data[22], data[23]]);
-        if num_chans != 1 {
-            return Err(WaveError::TooManyChannels);
-        }
-        let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
-        let bits_per_sample = u16::from_le_bytes([data[34], data[35]]);
-        if bits_per_sample != 8 {
-            return Err(WaveError::UnsupportedSampleType);
-        }
-
-        // The header seems to be exactly 44 bytes large, meaning we can subslice that away to get at sound data
-        let wave_data = &data_u32[(44 / 4)..];
-        return Ok(Wave {
-            sample_rate,
-            audio: wave_data,
-        });
+    // Validate the the file's format is something we can work with
+    let format_type = u16::from_le_bytes([data[20], data[21]]);
+    // We only support PCM audio
+    if format_type != 1 {
+        return Err(WaveError::UnsupportedSampleType);
     }
+    let num_chans = u16::from_le_bytes([data[22], data[23]]);
+    if num_chans != 1 {
+        return Err(WaveError::TooManyChannels);
+    }
+    let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
+    let bits_per_sample = u16::from_le_bytes([data[34], data[35]]);
+    if bits_per_sample != 8 {
+        return Err(WaveError::UnsupportedSampleType);
+    }
+
+    // The header seems to be exactly 44 bytes large, meaning we can subslice that away to get at sound data
+    let wave_data = &data_u32[(44 / 4)..];
+    return Ok((wave_data, sample_rate));
 }

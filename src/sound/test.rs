@@ -2,13 +2,13 @@ use super::*;
 use crate::test::test;
 
 #[test_case]
-fn test_sound_player_init() {
+fn test_sound_mixer_init() {
     test(
         &|| {
-            let _player = Player::init();
+            unsafe { mixer::init() };
         },
-        "test_sound_player_init",
-        "ensure initializing the sound player works",
+        "test_sound_mixer_init",
+        "ensure initializing the sound mixer works",
     );
 }
 
@@ -17,9 +17,9 @@ fn test_sound_playback() {
     test(
         &|| {
             crate::interrupt::init();
-            let player = Player::init();
-            player.play_raw_file("drill.wav", 8000).unwrap();
-            player.spin_until_playback_completes();
+            unsafe { mixer::init() };
+            mixer::add_raw_file_stream("drill.wav").unwrap();
+            mixer::spin_until_all_streams_inactive();
         },
         "test_sound_playback",
         "ensure playing sound works",
@@ -31,11 +31,13 @@ fn test_wave_playback() {
     test(
         &|| {
             crate::interrupt::init();
-            let player = Player::init();
-            player.play_wav_file("drill.wav").unwrap();
-            player.spin_until_playback_completes();
+            unsafe { mixer::init() };
+            mixer::add_wave_file_stream("drill.wav").unwrap();
+            mixer::spin_until_all_streams_inactive();
         },
         "test_wave_playback",
         "ensure playing a wave file works",
     );
 }
+
+// TODO: Test mixing multiple streams

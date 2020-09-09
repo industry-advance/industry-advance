@@ -8,6 +8,7 @@
 
 use crate::debug_log::Subsystems::Interrupt;
 
+use gba::io::display;
 use gba::io::irq::*;
 
 /// Can't use a mutex here because they internally require disabling interrupts
@@ -16,6 +17,7 @@ use gba::io::irq::*;
 /// This also must have a static lifetime because we don't know how long an
 /// ISR will be relevant.
 static mut TIMER1_HANDLER: Option<&'static dyn Fn()> = None;
+static mut VBLANK_HANDLER: Option<&'static dyn Fn()> = None;
 
 /// Whether an ISR is currently active for `timer1`.
 pub fn timer1_isr_active() -> bool {
@@ -49,6 +51,36 @@ pub fn set_timer1_handler(f: Option<&'static dyn Fn()>) {
     IE.write(flags);
 }
 
+/// Enable receiving interrupts when `vblank` occurs.
+///
+/// Pass `None` as the handler function to disable again.
+///
+/// Will panic if interrupts are disabled (meaning you didn't call `init()` first).
+pub fn set_vblank_handler(f: Option<&'static dyn Fn()>) {
+    if IME.read() == IrqEnableSetting::IRQ_NO {
+        panic!("Enable interrupts by calling init() before registering an ISR");
+    }
+    unsafe {
+        VBLANK_HANDLER = f;
+    }
+
+    // Enable/disable receiving vblank interrupts
+    let mut flags = IE.read();
+    match f {
+        Some(_) => {
+            debug_log!(Interrupt, "Enabling handler for vblank");
+            flags = flags.with_vblank(true);
+            display::DISPSTAT.write(display::DISPSTAT.read().with_vblank_irq_enable(true));
+        }
+        None => {
+            debug_log!(Interrupt, "Disabling handler for vblank");
+            flags = flags.with_vblank(false);
+            display::DISPSTAT.write(display::DISPSTAT.read().with_vblank_irq_enable(false));
+        }
+    }
+    IE.write(flags);
+}
+
 /// Initializes the module.
 ///
 /// Repeated calls will have no effect.
@@ -63,12 +95,20 @@ pub fn init() {
 
 /// This function has to have exactly this signature so that the hardware knows what to do with it.
 extern "C" fn irq_handler(flags: IrqFlags) {
+    // Run the handler if they're defined
     if flags.timer1() {
-        // Run the handler if one is defined
         unsafe {
             match TIMER1_HANDLER {
                 Some(handler) => handler(),
                 None => panic!("Received timer1 interrupt even though no handler has been registered. Have you registered your handler with the interrupt module?"),
+            }
+        }
+    }
+    if flags.vblank() {
+        unsafe {
+            match VBLANK_HANDLER {
+                Some(handler) => handler(),
+                None => panic!("Received vblank interrupt even though no handler has been registered. Have you registered your handler with the interrupt module?"),
             }
         }
     }

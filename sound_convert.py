@@ -7,10 +7,11 @@ import gbfs_utils
 
 import ffmpeg
 
+SAMPLE_RATE = 18157
 
 def ogg_to_gba_wav(path: Path, out_path: Path):
     audio = ffmpeg.input(path).audio
-    out = ffmpeg.output(audio, filename=out_path, ar="8000", acodec="pcm_u8", ac="1")
+    out = ffmpeg.output(audio, filename=out_path, ar="{}".format(SAMPLE_RATE), acodec="pcm_u8", ac="1")
     ffmpeg.run(out)
     # Because samples are read one word at a time, the file size has to be
     # a multiple of 4
