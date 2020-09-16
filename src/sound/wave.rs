@@ -1,11 +1,13 @@
 //! This module implements the minimum machinery needed for wave audio parsing for playback on the GBA.
 //! It does not strive to be complete or 100% correct, but "good enough".
 
+use super::mixer::SAMPLE_RATE;
 use crate::FS;
 
 use core::u16;
 use core::u32;
 
+use byte_slice_cast::AsSliceOf;
 use gbfs_rs::GBFSError;
 
 /// Failure conditions that may arise when parsing a wav file for use on GBA.
@@ -17,6 +19,8 @@ pub enum WaveError {
     UnsupportedSampleType,
     /// More than one sound channel is not supported.
     TooManyChannels,
+    /// The sound has an unsupported sample rate
+    UnsupportedSampleRate(u32),
     /// The wave data can't be cast to a u32 slice required for playback on the GBA
     Cast(byte_slice_cast::Error),
 }
@@ -29,6 +33,11 @@ impl core::fmt::Display for WaveError {
             UnsupportedSampleType => {
                 write!(f, "WaveError: Only 8 bit signed samples are supported")
             }
+            UnsupportedSampleRate(given_rate) => write!(
+                f,
+                "WaveError: Only a sample rate of {}Hz is supported (file is {}Hz)",
+                SAMPLE_RATE, given_rate
+            ),
             TooManyChannels => write!(f, "WaveError: Only 1 channel is supported"),
             Cast(err) => write!(
                 f,
@@ -50,12 +59,11 @@ impl From<byte_slice_cast::Error> for WaveError {
     }
 }
 
-/// Load from a GBFS file.
-/// Returns a tuple consisting of a subslice of PCM audio and it's sample rate,
-/// or an error.
-pub fn from_file(name: &str) -> Result<(&'static [u32], u32), WaveError> {
+/// Loads wave audio data from a GBFS file.
+///
+/// Returns a slice of the portion of the file containing PCM samples, or an error.
+pub fn from_file(name: &str) -> Result<&'static [i8], WaveError> {
     let data = FS.get_file_data_by_name(name)?;
-    let data_u32 = FS.get_file_data_by_name_as_u32_slice(name)?;
 
     /*
     Because we only care about a small subset of the metadata which is available at the beginning of the file in fixed offsets,
@@ -74,12 +82,15 @@ pub fn from_file(name: &str) -> Result<(&'static [u32], u32), WaveError> {
         return Err(WaveError::TooManyChannels);
     }
     let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
+    if sample_rate != SAMPLE_RATE {
+        return Err(WaveError::UnsupportedSampleRate(sample_rate));
+    }
     let bits_per_sample = u16::from_le_bytes([data[34], data[35]]);
     if bits_per_sample != 8 {
         return Err(WaveError::UnsupportedSampleType);
     }
 
     // The header seems to be exactly 44 bytes large, meaning we can subslice that away to get at sound data
-    let wave_data = &data_u32[(44 / 4)..];
-    return Ok((wave_data, sample_rate));
+    let wave_data = &data[44..].as_slice_of::<i8>().unwrap();
+    return Ok(wave_data);
 }

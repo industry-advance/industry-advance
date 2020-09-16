@@ -23,6 +23,7 @@ static mut VBLANK_HANDLER: Option<&'static dyn Fn()> = None;
 pub fn timer1_isr_active() -> bool {
     return IE.read().timer1();
 }
+
 /// Enable receiving interrupts when `timer1` fires.
 ///
 /// Pass `None` as the handler function to disable again.
@@ -49,6 +50,11 @@ pub fn set_timer1_handler(f: Option<&'static dyn Fn()>) {
         }
     }
     IE.write(flags);
+}
+
+/// Whether an ISR is currently active for `vblank`.
+pub fn vblank_isr_active() -> bool {
+    return IE.read().vblank();
 }
 
 /// Enable receiving interrupts when `vblank` occurs.

@@ -3,13 +3,7 @@
 //! In brief, the way it works is by utilizing double buffers (one is played while the other is mixed)
 //! which are switched on vblank.
 //!
-//! # Safety
-//!
-//! Due to the need to perform mixing in an ISR and the way atomics are emulated,
-//! many of the data structures in this module are not locked and therefore not race-safe.
-//! Therefore you should NEVER use these in concurrent contexts (like interrupts, async, etc!)
-//!
-//! TODO: Ponder how to improve safety (maybe just make adding a stream unsafe and push it onto the user?)
+//! TODO: Consider moving away from vblank to some timer or so to free up that IRQ.
 
 use super::wave;
 use crate::debug_log::Subsystems::Sound;
@@ -19,15 +13,21 @@ use crate::FS;
 use byte_slice_cast::{AsByteSlice, AsSliceOf};
 use gba::io::{dma::*, irq, sound, timers};
 use gbfs_rs::GBFSError;
+use spinning_top::{const_spinlock, Spinlock};
 
 /// The maximum number of streams that may be mixed.
 const NUM_MIXABLE_STREAMS: usize = 4;
 
-/// Size of a single audio buffer. Equivalent to the number of samples per frame (we switch buffers on vblank)
+/// Size of a single audio buffer. Equivalent to the number of samples per frame (we switch buffers on vblank).
 const AUDIO_BUF_SIZE: usize = 304;
-/// How many samples to play per second
-const SAMPLE_RATE: u32 = 18157;
+
+/// The supported sample rate in Hz. All supplied audio must adhere to this.
+pub const SAMPLE_RATE: u32 = 18157;
+
+/// CPU cycles per second.
 const CPU_CYCLES_PER_SEC: u32 = 16777216;
+
+/// The maximum value of a hardware timer.
 const TIMER_MAX_VALUE: u32 = u16::MAX as u32;
 
 /// Which of the buffers are currently being used for playback.
@@ -38,14 +38,14 @@ enum FrontBuf {
 
 /// Audio buffer suitable for feeding to the hardware for playback.
 type AudioBuf = [i8; AUDIO_BUF_SIZE];
-/// Audio buffer only used for mixing to prevent clipping caused by overflow.
+/// Audio buffer only used for mixing (widened to prevent clipping caused by overflow).
 type MixBuf = [i16; AUDIO_BUF_SIZE];
 
 /// Things that may go wrong when playing audio.
 // TODO: Display trait
 #[derive(Debug, Clone)]
 pub enum SoundError {
-    AllChannelsUsed,
+    AllChannelsInUse,
     Filesystem(GBFSError),
     Wave(wave::WaveError),
 }
@@ -62,6 +62,7 @@ impl From<wave::WaveError> for SoundError {
     }
 }
 
+#[derive(Debug)]
 struct Stream {
     /// The actual sample data
     data: &'static [i8],
@@ -69,28 +70,28 @@ struct Stream {
     offset: usize,
 }
 
-/// Double buffers (one plays, the other is used for mixing)
-static mut BUF_0: AudioBuf = [0; AUDIO_BUF_SIZE];
-static mut BUF_1: AudioBuf = [0; AUDIO_BUF_SIZE];
+/// Double buffers (one plays, the other is used for mixing).
+static BUF_0: Spinlock<AudioBuf> = const_spinlock([0; AUDIO_BUF_SIZE]);
+static BUF_1: Spinlock<AudioBuf> = const_spinlock([0; AUDIO_BUF_SIZE]);
 
-/// Which of the buffers are currently being used for playback
-static mut FRONT_BUF: FrontBuf = FrontBuf::Zero;
+/// Which of the buffers is currently being used for playback.
+static FRONT_BUF: Spinlock<FrontBuf> = const_spinlock(FrontBuf::Zero);
 
 /// The streams that should be mixed.
-static mut STREAMS: [Option<Stream>; NUM_MIXABLE_STREAMS] = [None; NUM_MIXABLE_STREAMS];
+static STREAMS: Spinlock<[Option<Stream>; NUM_MIXABLE_STREAMS]> =
+    const_spinlock([None; NUM_MIXABLE_STREAMS]);
 
 /// Initializes the audio mixer.
 ///
 /// Will panic if interrupts aren't enabled when called.
 ///
 /// # Safety
-/// This uses several hardware timers and a DMA engine.
-/// After activation, you shouldn't touch `DMA1` or timer `0`.
 ///
-/// Also, keep the module-wide safety warning in mind.
-pub unsafe fn init() {
+/// This uses a hardware timer, a DMA engine and the vblank IRQ handler.
+/// After activation, you shouldn't touch `DMA1`, `timer0` or the `vblank` IRQ.
+pub fn init() {
     // Before we do anything, make sure that interrupts are enabled
-    // so that we can stop playback later.
+    // so that we can mix on vblank
     if irq::IME.read() == irq::IrqEnableSetting::IRQ_NO {
         panic!("Sound playback requires interrupts to be enabled")
     }
@@ -126,7 +127,8 @@ pub unsafe fn init() {
 
     // Configure DMA 1 to continuously transfer samples from the currently active buffer
     unsafe {
-        DMA1::set_source(BUF_0.as_ptr() as *const u32);
+        let buf_0 = BUF_0.lock();
+        DMA1::set_source(buf_0.as_ptr() as *const u32);
         // Write into direct sound channel A's FIFO
         DMA1::set_dest(sound::FIFO_A_L.to_usize() as *mut u32);
         DMA1::set_control(
@@ -147,16 +149,17 @@ pub unsafe fn init() {
 
 /// Switch the buffer that the sound hardware currently plays from.
 fn switch_active_buf() {
-    unsafe {
-        match FRONT_BUF {
-            FrontBuf::Zero => {
-                FRONT_BUF = FrontBuf::One;
-                DMA1::set_source(BUF_1.as_ptr() as *const u32);
-            }
-            FrontBuf::One => {
-                FRONT_BUF = FrontBuf::Zero;
-                DMA1::set_source(BUF_0.as_ptr() as *const u32);
-            }
+    let mut front_buf = FRONT_BUF.lock();
+    match *front_buf {
+        FrontBuf::Zero => {
+            *front_buf = FrontBuf::One;
+            let buf_1 = BUF_1.lock();
+            unsafe { DMA1::set_source(buf_1.as_ptr() as *const u32) };
+        }
+        FrontBuf::One => {
+            *front_buf = FrontBuf::Zero;
+            let buf_0 = BUF_0.lock();
+            unsafe { DMA1::set_source(buf_0.as_ptr() as *const u32) };
         }
     }
 }
@@ -166,15 +169,13 @@ fn switch_active_buf() {
 /// Returns an error if
 /// the maximum number of streams is already playing or the file is unsuitable.
 pub fn add_wave_file_stream(file_name: &str) -> Result<(), SoundError> {
-    let (audio, sample_rate) = wave::from_file(file_name)?;
+    let audio = wave::from_file(file_name)?;
     debug_log!(
         Sound,
-        "Adding wav file {} to mixer (sample rate: {} Hz, {} samples)",
+        "Adding wav file {} to mixer ({} samples)",
         file_name,
-        sample_rate,
-        audio.len() * 4
+        audio.len()
     );
-    // TODO: Deal with sample rate
     add_raw_stream(audio)?;
     return Ok(());
 }
@@ -183,124 +184,133 @@ pub fn add_wave_file_stream(file_name: &str) -> Result<(), SoundError> {
 ///
 /// Returns an error if
 /// the maximum number of streams is already playing or the file is unsuitable.
+///
+/// Keep in mind that raw files have no metadata, so it's on you to make sure
+/// the samples are of the correct width and sample rate.
 pub fn add_raw_file_stream(file_name: &str) -> Result<(), SoundError> {
-    let data = FS.get_file_data_by_name_as_u32_slice(file_name)?;
+    let audio = FS
+        .get_file_data_by_name(file_name)?
+        .as_slice_of::<i8>()
+        .unwrap();
     debug_log!(
         Sound,
         "Adding raw file {} to mixer ({} samples)",
         file_name,
-        data.len() * 4
+        audio.len()
     );
-    add_raw_stream(data)?;
+    add_raw_stream(audio)?;
     return Ok(());
 }
 
 /// Add a stream to be mixed.
-/// The data must actually be valid i8 samples, but a u32 is taken to ensure that DMA works properly.
 ///
 /// Returns an error if
 /// the maximum number of streams is already playing.
-fn add_raw_stream(data: &'static [u32]) -> Result<(), SoundError> {
-    unsafe {
-        // Find the first unused stream slot
-        let mut first_free_stream: Option<usize> = None;
-        for (i, stream) in STREAMS.iter().enumerate() {
-            if stream.is_none() {
-                first_free_stream = Some(i);
-                break;
-            }
+fn add_raw_stream(data: &'static [i8]) -> Result<(), SoundError> {
+    let mut streams = STREAMS.lock();
+    // Find the first unused stream slot
+    let mut first_free_stream: Option<usize> = None;
+    for (i, stream) in streams.iter().enumerate() {
+        if stream.is_none() {
+            first_free_stream = Some(i);
+            break;
         }
-        if first_free_stream.is_none() {
-            return Err(SoundError::AllChannelsUsed);
-        }
-
-        // Actually insert the stream there
-        let stream_idx = first_free_stream.unwrap();
-        debug_log!(
-            Sound,
-            "Adding stream with {} samples as stream no. {}",
-            data.len() * 4,
-            stream_idx
-        );
-        STREAMS[stream_idx] = Some(Stream {
-            data: data.as_byte_slice().as_slice_of::<i8>().unwrap(),
-            offset: 0,
-        });
-        return Ok(());
     }
+    if first_free_stream.is_none() {
+        return Err(SoundError::AllChannelsInUse);
+    }
+
+    // Actually insert the stream there
+    let stream_idx = first_free_stream.unwrap();
+    debug_log!(
+        Sound,
+        "Adding stream with {} samples as stream no. {}",
+        data.len(),
+        stream_idx
+    );
+    streams[stream_idx] = Some(Stream {
+        data: data,
+        offset: 0,
+    });
+    return Ok(());
 }
 
 /// Mix active streams in the back buffer.
 fn mix_buffers() {
+    /// Perform the actual mixing by adding samples and updating the offset into the stream afterwards
     fn mix_stream(buf: &mut MixBuf, stream: &mut Stream) {
         let mixer_in = &stream.data[stream.offset..];
-        // Add the sample
         let max_idx = buf.len();
         for (i, sample) in mixer_in
             .iter()
             .enumerate()
-            .take_while(|(i, _)| i < &max_idx)
+            .take_while(|(i, _)| *i < max_idx)
         {
             buf[i] += *sample as i16;
         }
 
-        // Add the mixed data to the offset
+        // Mark the samples in the stream as played by updating the offset to next sample to play
         stream.offset += buf.len();
     }
 
     fn disable_inactive_streams() {
+        let mut streams = STREAMS.lock();
         // Check whether any stream has been emptied now, meaning we can mark it as such
-        unsafe {
-            for (i, stream) in STREAMS
-                .iter_mut()
-                .enumerate()
-                .filter(|(_, stream)| stream.is_some())
-            {
-                // TODO: Take looping into consideration
+        for (i, stream) in streams
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, stream)| stream.is_some())
+        {
+            // TODO: Take looping into consideration
 
-                if stream.as_ref().unwrap().data.len() <= stream.as_ref().unwrap().offset {
-                    debug_log!(Sound, "Stream {} now empty, disabling", i);
-                    *stream = None;
-                }
+            if stream.as_ref().unwrap().data.len() <= stream.as_ref().unwrap().offset {
+                debug_log!(Sound, "Stream {} now empty, disabling", i);
+                *stream = None;
             }
+        }
+
+        // If no more streams are active, disable mixing.
+        // FIXME: This has to be re-enabled if a new stream is added again,
+        // but that's not done yet because I want to get the tests working ASAP.
+        // FIXME: Also should disable and re-enable playback
+        if streams.iter().filter(|stream| stream.is_some()).count() == 0 {
+            interrupt::set_vblank_handler(None);
         }
     }
 
     // TODO: Per-channel volume control
-    // TODO: Resampling
     // TODO: Looping
 
     let mut mix_buffer: MixBuf = [0; AUDIO_BUF_SIZE];
     // Iterate over the streams and mix
-    unsafe {
-        for stream in STREAMS.iter_mut() {
-            match stream {
-                Some(stream) => mix_stream(&mut mix_buffer, stream),
-                None => {}
+    let mut streams = STREAMS.lock();
+    for stream in streams.iter_mut() {
+        match stream {
+            Some(stream) => mix_stream(&mut mix_buffer, stream),
+            None => {}
+        }
+    }
+
+    let mut buf_0 = BUF_0.lock();
+    let mut buf_1 = BUF_1.lock();
+    // Copy the wider mixing buffer into the narrower hardware buffer
+    // Allow the optimizer to elide bounds checks
+    assert_eq!(buf_0.len(), mix_buffer.len());
+    assert_eq!(buf_1.len(), mix_buffer.len());
+    let front_buf = FRONT_BUF.lock();
+    match *front_buf {
+        FrontBuf::Zero => {
+            for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
+                buf_1[i] = elem;
+            }
+        }
+        FrontBuf::One => {
+            for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
+                buf_0[i] = elem;
             }
         }
     }
 
-    unsafe {
-        // Copy the wider mixing buffer into the narrower hardware buffer
-        // Allow the optimizer to elide bounds checks
-        assert_eq!(BUF_0.len(), mix_buffer.len());
-        assert_eq!(BUF_1.len(), mix_buffer.len());
-        match FRONT_BUF {
-            FrontBuf::Zero => {
-                for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
-                    BUF_1[i] = elem;
-                }
-            }
-            FrontBuf::One => {
-                for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
-                    BUF_0[i] = elem;
-                }
-            }
-        }
-    }
-
-    // TODO: Disable sound playback entirely if all streams are inactive
     disable_inactive_streams();
 }
 
@@ -313,11 +323,9 @@ fn vblank_irq() {
 /// A helper function to terminate tests once all streams are inactive.
 /// Not to be used outside of tests.
 pub(super) fn spin_until_all_streams_inactive() {
-    unsafe {
-        loop {
-            if STREAMS.iter().filter(|x| x.is_some()).count() == 0 {
-                return;
-            }
+    loop {
+        if !interrupt::vblank_isr_active() {
+            return;
         }
     }
 }
