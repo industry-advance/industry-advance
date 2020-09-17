@@ -15,10 +15,10 @@ use core::convert::AsRef;
 use core::fmt::Write;
 
 use gba::io::{display, keypad, window};
+use spinning_top::{const_spinlock, Spinlock};
 
-// TODO: Consider lazy_static-ing these or so to get rid of the unsafe blocks
-static mut WINDOW_0_TAKEN: bool = false;
-static mut WINDOW_1_TAKEN: bool = false;
+static WINDOW_0_TAKEN: Spinlock<bool> = const_spinlock(false);
+static WINDOW_1_TAKEN: Spinlock<bool> = const_spinlock(false);
 
 /// Which window this is
 enum WindowNum {
@@ -38,45 +38,42 @@ impl Window {
     /// Attempting to create any more will cause a panic.
     pub fn new() -> Window {
         let num: WindowNum;
-
-        /* Accessing a static mut is unsafe.
-        However, we can do that here because this function isn't called from an interrupt handler,
-        so it's not reentrant and due to the single-core CPU a new() call must always complete before the next one starts. */
-        unsafe {
-            if WINDOW_0_TAKEN {
-                if WINDOW_1_TAKEN {
-                    panic!("Cannot create window because 2 already exist. Drop one first.");
-                } else {
-                    num = WindowNum::One;
-                    WINDOW_1_TAKEN = true;
-                    // Initialize window control registers with size for fullscreen
-                    window::WIN1H.write(
-                        window::HorizontalWindowSetting::new()
-                            .with_col_start(0)
-                            .with_col_end(SCREEN_WIDTH as u16),
-                    );
-                    window::WIN1V.write(
-                        window::VerticalWindowSetting::new()
-                            .with_row_start(0)
-                            .with_row_end(SCREEN_HEIGHT as u16),
-                    );
-                }
+        let mut window_0_taken = WINDOW_0_TAKEN.lock();
+        let mut window_1_taken = WINDOW_1_TAKEN.lock();
+        if *window_0_taken {
+            if *window_1_taken {
+                panic!("Cannot create window because 2 already exist. Drop one first.");
             } else {
-                num = WindowNum::Zero;
-                WINDOW_0_TAKEN = true;
+                num = WindowNum::One;
+                *window_1_taken = true;
                 // Initialize window control registers with size for fullscreen
-                window::WIN0H.write(
+                window::WIN1H.write(
                     window::HorizontalWindowSetting::new()
                         .with_col_start(0)
                         .with_col_end(SCREEN_WIDTH as u16),
                 );
-                window::WIN0V.write(
+                window::WIN1V.write(
                     window::VerticalWindowSetting::new()
                         .with_row_start(0)
                         .with_row_end(SCREEN_HEIGHT as u16),
                 );
             }
+        } else {
+            num = WindowNum::Zero;
+            *window_0_taken = true;
+            // Initialize window control registers with size for fullscreen
+            window::WIN0H.write(
+                window::HorizontalWindowSetting::new()
+                    .with_col_start(0)
+                    .with_col_end(SCREEN_WIDTH as u16),
+            );
+            window::WIN0V.write(
+                window::VerticalWindowSetting::new()
+                    .with_row_start(0)
+                    .with_row_end(SCREEN_HEIGHT as u16),
+            );
         }
+
         // Initialize a new text engine which draws to our window for ANSI art
         let text: TextEngine;
         match num {
@@ -320,15 +317,12 @@ impl Drop for Window {
     fn drop(&mut self) {
         self.hide();
         self.text.clear();
-        /* Modifying a static mut is unsafe.
-        However, we can do that here because this function isn't called from an interrupt handler,
-        so it's not reentrant and due to the single-core CPU and no threads a drop call must always complete before the next one starts. */
-        unsafe {
-            use WindowNum::*;
-            match &self.num {
-                Zero => WINDOW_0_TAKEN = false,
-                One => WINDOW_1_TAKEN = false,
-            }
+        let mut window_0_taken = WINDOW_0_TAKEN.lock();
+        let mut window_1_taken = WINDOW_1_TAKEN.lock();
+        use WindowNum::*;
+        match &self.num {
+            Zero => *window_0_taken = false,
+            One => *window_1_taken = false,
         }
     }
 }
