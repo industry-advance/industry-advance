@@ -10,6 +10,7 @@ let
     nixpkgs.python38Packages.pydocstyle
     nixpkgs.python38Packages.mypy
     nixpkgs.python38Packages.ipython
+    nixpkgs.python38Packages.pylint
 
     # For running tests headlessly
     nixpkgs.mgba
