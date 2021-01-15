@@ -3,8 +3,8 @@ stdenv.mkDerivation {
   name = "grit";
   version = "0.8.15";
   src = builtins.fetchTarball {
-    url = "https://github.com/devkitPro/grit/archive/v0.8.15.tar.gz";
-    sha256 = "100b9nn2h2hjivjwzh7w83ighd6ww8wbfiffyyzr7xidnz0bg327";
+    url = "https://github.com/devkitPro/grit/archive/v0.8.16.tar.gz";
+    sha256 = "08pmxrn8accm32qcbj17csb28j4fnxjdvjs358ryzh19qs1gsdw9";
   };
 
   preConfigure = ''
