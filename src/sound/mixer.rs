@@ -5,6 +5,8 @@
 //!
 //! TODO: Consider moving away from vblank to some timer or so to free up that IRQ.
 
+use core::convert::TryInto;
+
 use super::wave;
 use crate::debug_log::Subsystems::Sound;
 use crate::interrupt;
@@ -100,7 +102,11 @@ pub fn init() {
     sound::SOUNDCNT_X.write(sound::SoundMasterSetting::new().with_psg_fifo_master_enabled(true));
 
     // Configure sound timer initial value such that it overflows exactly when a sample is about to run out.
-    timers::TM0CNT_L.write((TIMER_MAX_VALUE - (CPU_CYCLES_PER_SEC / SAMPLE_RATE)) as u16);
+    timers::TM0CNT_L.write(
+        (TIMER_MAX_VALUE - (CPU_CYCLES_PER_SEC / SAMPLE_RATE))
+            .try_into()
+            .unwrap(),
+    );
     timers::TM0CNT_H.write(
         timers::TimerControlSetting::new()
             // Count up by 1 each CPU cycle
@@ -123,7 +129,7 @@ pub fn init() {
     );
 
     // Configure the vblank interrupt to switch our buffers
-    interrupt::set_vblank_handler(Some(&vblank_irq));
+    interrupt::set_vblank_handler(Some(&sound_vblank_irq));
 
     // Configure DMA 1 to continuously transfer samples from the currently active buffer
     unsafe {
@@ -148,7 +154,7 @@ pub fn init() {
 }
 
 /// Switch the buffer that the sound hardware currently plays from.
-fn switch_active_buf() {
+fn switch_front_buf() {
     let mut front_buf = FRONT_BUF.lock();
     match *front_buf {
         FrontBuf::Zero => {
@@ -237,23 +243,19 @@ fn add_raw_stream(data: &'static [i8]) -> Result<(), SoundError> {
 
 /// Mix active streams in the back buffer.
 fn mix_buffers() {
-    /// Perform the actual mixing by adding samples and updating the offset into the stream afterwards
-    fn mix_stream(buf: &mut MixBuf, stream: &mut Stream) {
-        let mixer_in = &stream.data[stream.offset..];
-        let max_idx = buf.len();
-        for (i, sample) in mixer_in
-            .iter()
-            .enumerate()
-            .take_while(|(i, _)| *i < max_idx)
-        {
-            buf[i] += *sample as i16;
+    /// Perform the actual mixing of a single stream by adding samples and updating the offset into the stream afterwards
+    fn mix_stream(mix_buf: &mut MixBuf, stream: &mut Stream) {
+        let mixer_input = &stream.data[stream.offset..stream.offset + mix_buf.len()];
+        for (i, sample) in mixer_input.iter().enumerate() {
+            mix_buf[i] += *sample as i16;
         }
 
         // Mark the samples in the stream as played by updating the offset to next sample to play
-        stream.offset += buf.len();
+        stream.offset += mix_buf.len();
     }
 
-    fn disable_inactive_streams() {
+    /// Remove streams that are finished playing from the list of active streams.
+    fn gc_finished_streams() {
         let mut streams = STREAMS.lock();
         // Check whether any stream has been emptied now, meaning we can mark it as such
         for (i, stream) in streams
@@ -269,12 +271,41 @@ fn mix_buffers() {
             }
         }
 
-        // If no more streams are active, disable mixing.
-        // FIXME: This has to be re-enabled if a new stream is added again,
-        // but that's not done yet because I want to get the tests working ASAP.
-        // FIXME: Also should disable and re-enable playback
-        if streams.iter().filter(|stream| stream.is_some()).count() == 0 {
-            interrupt::set_vblank_handler(None);
+        // TODO: If no more streams are active, disable mixing (and re-enable once new stream is added).
+        //if streams.iter().filter(|stream| stream.is_some()).count() == 0 {
+        //    interrupt::set_vblank_handler(None);
+        //}
+    }
+
+    fn mix_all_streams(mix_buffer: &mut MixBuf) {
+        let mut streams = STREAMS.lock();
+        for stream in streams.iter_mut() {
+            match stream {
+                Some(stream) => mix_stream(mix_buffer, stream),
+                None => {}
+            }
+        }
+    }
+
+    fn copy_from_mix_to_playback_buf(mix_buffer: &MixBuf) {
+        let mut buf_0 = BUF_0.lock();
+        let mut buf_1 = BUF_1.lock();
+        // Copy the wider mixing buffer into the narrower hardware buffer
+        // Allow the optimizer to elide bounds checks
+        assert_eq!(buf_0.len(), mix_buffer.len());
+        assert_eq!(buf_1.len(), mix_buffer.len());
+        let front_buf = FRONT_BUF.lock();
+        match *front_buf {
+            FrontBuf::Zero => {
+                for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
+                    buf_1[i] = elem;
+                }
+            }
+            FrontBuf::One => {
+                for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
+                    buf_0[i] = elem;
+                }
+            }
         }
     }
 
@@ -282,41 +313,16 @@ fn mix_buffers() {
     // TODO: Looping
 
     let mut mix_buffer: MixBuf = [0; AUDIO_BUF_SIZE];
-    // Iterate over the streams and mix
-    let mut streams = STREAMS.lock();
-    for stream in streams.iter_mut() {
-        match stream {
-            Some(stream) => mix_stream(&mut mix_buffer, stream),
-            None => {}
-        }
-    }
+    mix_all_streams(&mut mix_buffer);
+    copy_from_mix_to_playback_buf(&mix_buffer);
 
-    let mut buf_0 = BUF_0.lock();
-    let mut buf_1 = BUF_1.lock();
-    // Copy the wider mixing buffer into the narrower hardware buffer
-    // Allow the optimizer to elide bounds checks
-    assert_eq!(buf_0.len(), mix_buffer.len());
-    assert_eq!(buf_1.len(), mix_buffer.len());
-    let front_buf = FRONT_BUF.lock();
-    match *front_buf {
-        FrontBuf::Zero => {
-            for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
-                buf_1[i] = elem;
-            }
-        }
-        FrontBuf::One => {
-            for (i, elem) in mix_buffer.iter().map(|x| *x as i8).enumerate() {
-                buf_0[i] = elem;
-            }
-        }
-    }
-
-    disable_inactive_streams();
+    // TODO: Re-enable, causes ISR to freeze for some reason
+    gc_finished_streams();
 }
 
 /// All the housekeeping tasks that must be performed to refill a buffer are called here.
-fn vblank_irq() {
-    switch_active_buf();
+fn sound_vblank_irq() {
+    switch_front_buf();
     mix_buffers();
 }
 

@@ -11,7 +11,6 @@ fn test_sound_mixer_init() {
         "ensure initializing the sound mixer works",
     );
 }
-
 #[test_case]
 fn test_raw_sound_playback() {
     test(
