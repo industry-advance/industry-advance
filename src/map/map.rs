@@ -1,14 +1,14 @@
 use super::background::LargeBackground;
 
 use crate::debug_log::Subsystems;
-use crate::shared_constants::{SCREENBLOCK_SIZE_BYTES, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::shared_constants::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::vram::SCREENBLOCK_SIZE_BYTES;
 use crate::FS;
-
-use core::str;
 
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::str;
 
 use serde::Deserialize;
 

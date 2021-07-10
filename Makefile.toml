@@ -5,39 +5,34 @@ skip_core_tasks = true
 command = "mkdir"
 args = ["-p", "./target"]
 
-[tasks.assemble]
-dependencies = ["create-target-dir"]
-command = "arm-none-eabi-as"
-args = ["crt0.s", "-o", "target/crt0.o"]
-
 [tasks.assets]
 command = "python3"
 args = ["./convert_assets.py"]
 
 [tasks.build]
-dependencies = ["assemble"]
 command = "cargo"
-args = ["build", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json", "--release"]
+args = ["build", "--release"]
 
 [tasks.build-debug]
-dependencies = ["assemble"]
 command = "cargo"
-args = ["build", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
+args = ["build"]
 
 [tasks.pack-rom]
 dependencies = ["build"]
 command = "arm-none-eabi-objcopy"
-args = ["-O", "binary", "target/thumbv4-none-agb/release/industry-advance", "target/industry-advance.gba"]
+args = ["-O", "binary", "target/thumbv4t-nintendo-none-eabi/release/industry-advance", "target/industry-advance.gba"]
 
 [tasks.test]
-dependencies = ["assemble"]
 command = "cargo"
-args = ["test", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
+args = ["test"]
+
+[tasks.test-release]
+command = "cargo"
+args = ["test", "--release"]
 
 [tasks.clippy]
-dependencies = ["assemble"]
 command = "cargo"
-args = ["clippy", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
+args = ["clippy"]
 
 [tasks.run]
 dependencies = ["build", "pack-rom"]
@@ -46,7 +41,7 @@ args = ["--log-level=-1", "target/industry-advance.gba"]
 
 [tasks.run-qt]
 dependencies = ["build", "pack-rom"]
-command = "/usr/bin/mgba-qt"
+command = "mgba-qt"
 args = ["--log-level=-1", "target/industry-advance.gba"]
 
 [tasks.justrelease]
@@ -60,15 +55,14 @@ alias = "build-all"
 
 [tasks.debug-gdb]
 dependencies = ["build-debug"]
-command = "/usr/bin/mgba-qt"
-args = ["--log-level=2047", "./target/thumbv4-none-agb/debug/industry-advance", "-g"]
+command = "mgba-qt"
+args = ["--log-level=2047", "./target/thumbv4t-nintendo-none-eabi/debug/industry-advance", "-g"]
 
 [tasks.debug]
 dependencies = ["build-debug"]
-command = "/usr/bin/mgba-qt"
-args = ["--log-level=2047", "./target/thumbv4-none-agb/debug/industry-advance"]
+command = "mgba-qt"
+args = ["--log-level=2047", "./target/thumbv4t-nintendo-none-eabi/debug/industry-advance"]
 
 [tasks.docs]
-dependencies = ["assemble"]
 command = "cargo"
-args = ["doc", "--open", "-Z", "build-std=core,alloc", "--target", "thumbv4-none-agb.json"]
+args = ["doc", "--open"]

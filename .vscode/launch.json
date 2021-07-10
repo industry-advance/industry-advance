@@ -11,14 +11,11 @@
             "printCalls": true,
             "showDevDebugOutput": true,
             "executable": "${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance",
-            "gdbpath": "arm-none-eabi-gdb",
+            "gdbpath": "gdb",
             "preLaunchTask": "run GDB server",
             "postDebugTask": "kill emulator",
             "autorun": [
-                //"target remote localhost:2345",
-                //"symbol-file ./target/thumbv4-none-agb/debug/industry-advance",
-                // "monitor reset" 
-                // Target does not support this command.
+                "file /target/thumbv4-none-agb/debug/industry-advance",
             ]
         },
     ]

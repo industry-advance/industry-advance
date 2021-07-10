@@ -6,11 +6,11 @@ use core::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use gba::{oam, palram, Color};
+use gba::prelude::*;
 use hashbrown::HashMap;
 use twox_hash::XxHash64;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum SpriteBlockState {
     Unused,
     Used,
@@ -75,14 +75,14 @@ impl HWSpriteAllocator {
     }
 
     /// Initialize the allocator by copying the palette into VRAM.
-    ///  
+    ///
     /// Note that you're still required to manually enable object display in DISPCNT in order to see the sprites.
     /// # Safety
     ///
     /// Any other code manipulating the sprite palette after
     /// this function is called will lead to graphical glitches.
     pub fn init(&self) {
-        let pal_block = palram::PALRAM_OBJ;
+        let pal_block = OBJ_PALETTE;
         for (i, color) in self.palette.iter().enumerate() {
             pal_block.index(i).write(*color);
         }
@@ -180,31 +180,23 @@ impl HWSpriteAllocator {
     fn prepare_oam_slot(
         &self,
         starting_vram_tile_id: u16,
-        oam_slot: usize,
-        obj_size: oam::ObjectSize,
-        obj_shape: oam::ObjectShape,
+        oam_slot_idx: usize,
+        obj_size: u16,
+        obj_shape: u16,
     ) {
-        oam::write_affine_parameters(
-            oam_slot,
-            oam::AffineParameters {
-                pa: 1,
-                pb: 0,
-                pc: 0,
-                pd: 1,
-            },
-        ); // Identity matrix, ensures that the last use's affine transform is wiped
-        oam::write_obj_attributes(
-            oam_slot,
-            oam::ObjectAttributes {
-                attr0: oam::OBJAttr0::new()
-                    .with_obj_rendering(oam::ObjectRender::Disabled)
-                    .with_obj_shape(obj_shape)
-                    .with_is_8bpp(true),
-                attr1: oam::OBJAttr1::new().with_obj_size(obj_size),
-                attr2: oam::OBJAttr2::new()
-                    .with_tile_id(starting_vram_tile_id)
-                    .with_priority(1),
-            },
+        OAM_ATTR0.index(oam_slot_idx).write(
+            ObjAttr0::new()
+                .with_double_disabled(true)
+                .with_obj_shape(obj_shape)
+                .with_use_palbank(true),
+        );
+        OAM_ATTR1
+            .index(oam_slot_idx)
+            .write(ObjAttr1::new().with_obj_size(obj_size));
+        OAM_ATTR2.index(oam_slot_idx).write(
+            ObjAttr2::new()
+                .with_tile_index(starting_vram_tile_id)
+                .with_priority(1),
         );
     }
     /// Find a free slot in OAM.
@@ -288,9 +280,7 @@ impl HWSpriteAllocator {
             .push(self.oam_occupied_list.clone());
         for (slot, is_occupied) in self.oam_occupied_list.iter().enumerate() {
             if *is_occupied {
-                let mut attrs = oam::read_obj_attributes(slot).unwrap();
-                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
-                oam::write_obj_attributes(slot, attrs);
+                OAM_ATTR0.index(slot).apply(|x| x.set_double_disabled(true));
             }
         }
     }
@@ -308,13 +298,11 @@ impl HWSpriteAllocator {
         }
         for (slot, is_occupied) in self.oam_occupied_list.iter().enumerate() {
             if *is_occupied {
-                let mut attrs = oam::read_obj_attributes(slot).unwrap();
-                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Normal);
-                oam::write_obj_attributes(slot, attrs);
+                OAM_ATTR0
+                    .index(slot)
+                    .apply(|x| x.set_double_disabled(false));
             } else {
-                let mut attrs = oam::read_obj_attributes(slot).unwrap();
-                attrs.attr0 = attrs.attr0.with_obj_rendering(oam::ObjectRender::Disabled);
-                oam::write_obj_attributes(slot, attrs);
+                OAM_ATTR0.index(slot).apply(|x| x.set_double_disabled(true));
             }
         }
         return Ok(());

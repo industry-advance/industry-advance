@@ -2,6 +2,9 @@
 //! yet are used by several of them.
 
 use fixed::{types::extra::U8, FixedI32, FixedU32};
+use gba::mmio_addresses::*;
+use gba::mmio_types::*;
+
 /// A fixed-point velocity is used because the GBA has no FPU.
 /// The velocity has 23 bits of precision before and 8 after the comma.
 pub type Velocity = FixedI32<U8>;
@@ -16,6 +19,7 @@ pub type Position = (Coordinate, Coordinate);
 /// This enum represents any background.
 /// It's quite convenient, and should be upstreamed.
 #[allow(dead_code)] // Not all variants used ATM
+#[derive(Copy, Clone, Debug)]
 pub enum Background {
     Zero,
     One,
@@ -23,18 +27,16 @@ pub enum Background {
     Three,
 }
 
-use gba::io::background;
-use gba::io::display;
 impl Background {
     /// Apply the given setting to the background
-    pub fn write(&self, setting: background::BackgroundControlSetting) {
+    pub fn write(&self, setting: BackgroundControl) {
         // Utilize the various control register setting functions
         use Background::*;
         match self {
-            Zero => background::BG0CNT.write(setting),
-            One => background::BG1CNT.write(setting),
-            Two => background::BG2CNT.write(setting),
-            Three => background::BG3CNT.write(setting),
+            Zero => BG0CNT.write(setting),
+            One => BG1CNT.write(setting),
+            Two => BG2CNT.write(setting),
+            Three => BG3CNT.write(setting),
         }
     }
 
@@ -42,10 +44,10 @@ impl Background {
     pub fn set_visible(&self, visible: bool) {
         use Background::*;
         match self {
-            Zero => display::DISPCNT.write(display::DISPCNT.read().with_bg0(visible)),
-            One => display::DISPCNT.write(display::DISPCNT.read().with_bg1(visible)),
-            Two => display::DISPCNT.write(display::DISPCNT.read().with_bg2(visible)),
-            Three => display::DISPCNT.write(display::DISPCNT.read().with_bg3(visible)),
+            Zero => DISPCNT.apply(|x| x.set_display_bg0(visible)),
+            One => DISPCNT.apply(|x| x.set_display_bg1(visible)),
+            Two => DISPCNT.apply(|x| x.set_display_bg2(visible)),
+            Three => DISPCNT.apply(|x| x.set_display_bg3(visible)),
         }
     }
 }

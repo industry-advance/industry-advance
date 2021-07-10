@@ -1,22 +1,21 @@
 use crate::components::{BuilderComponent, InputComponent};
 use crate::debug_log::*;
-
 use alloc::boxed::Box;
-
-use gba::io::keypad;
+use gba::mmio_addresses::*;
+use gba::mmio_types::*;
 use tiny_ecs::{ECSError, Entities};
 
 /// This system reads and processes player input.
 pub(crate) struct InputSystem {
     // Tracks the key state of the last update to allow checking for differences w/ current state
-    last_keys: keypad::KeyInput,
+    last_keys: Keys,
     start_held: bool,
 }
 impl InputSystem {
     /// Initializes the system.
     pub fn init() -> InputSystem {
         return InputSystem {
-            last_keys: keypad::KeyInput::new(),
+            last_keys: Keys::new(),
             start_held: false,
         };
     }
@@ -24,7 +23,7 @@ impl InputSystem {
     /// Updates the input-related components of entities.
     pub fn tick(&mut self, ecs: &mut Entities, live_entities: &[usize]) -> Result<bool, ECSError> {
         // Read the current state of the keypad
-        let keys = keypad::read_key_input();
+        let keys: Keys = KEYINPUT.read().into();
         // If the new state is different than the old one, do the updating
         if keys != self.last_keys {
             for id in live_entities {

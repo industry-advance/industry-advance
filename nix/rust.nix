@@ -4,7 +4,7 @@ let
   pkgs =
     import sources.nixpkgs { overlays = [ (import sources.nixpkgs-mozilla) ]; };
   channel = "nightly";
-  date = "2021-01-15";
+  date = "2021-07-07";
   targets = [ ];
   extensions =
     [ "rust-src" "clippy-preview" "rustfmt-preview" "rust-analyzer-preview" ];

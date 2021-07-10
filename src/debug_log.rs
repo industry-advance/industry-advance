@@ -48,13 +48,14 @@ impl Subsystems {
     }
 }
 /// List of subsystems to enable logging for
-pub const ENABLED_SUBSYSTEMS: [Subsystems; 2] = [Subsystems::Main, Subsystems::Game];
+pub const ENABLED_SUBSYSTEMS: [Subsystems; 3] =
+    [Subsystems::Main, Subsystems::Game, Subsystems::Sound];
 
 #[macro_export]
 macro_rules! debug_log {
   ($subsystem:expr ,$($arg:tt)*) => {{
     if $crate::debug_log::ENABLED_SUBSYSTEMS.contains(&$subsystem) {
-        use gba::mgba::{MGBADebug, MGBADebugLevel};
+        use gba::debugging::mgba::{MGBADebug, MGBADebugLevel};
         use core::fmt::Write;
         if let Some(mut mgba) = MGBADebug::new() {
           let _ = write!(mgba, "{}", format!("[{}] {}", $subsystem.to_str(), format!($($arg)*)));

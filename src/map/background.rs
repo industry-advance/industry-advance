@@ -1,11 +1,9 @@
-use core::convert::TryInto;
-
-use alloc::vec::Vec;
-
-use gba::io::{background, display, dma};
-use gba::{palram, vram, Color};
-
 use crate::shared_constants::*;
+use crate::vram;
+use alloc::vec::Vec;
+use byte_slice_cast::AsSliceOf;
+use core::convert::TryInto;
+use gba::prelude::*;
 
 /// By default, the GBA only allows up to 32x32 tiles per screenblock.
 /// However, the hardware supports using adjacent screenblocks to produce up to 64x64 tile maps.
@@ -77,34 +75,13 @@ impl LargeBackground {
             panic!("Attempt to load BG palette that's too large: allowed size is {} entries, was {} entries", MAP_BG_PALETTE_END-MAP_BG_PALETTE_START, palette.len());
         }
         for (i, entry) in palette.iter().enumerate() {
-            let idx = palram::index_palram_bg_4bpp(
-                ((MAP_BG_PALETTE_START + i) / 16) as u8,
-                ((MAP_BG_PALETTE_START + i) % 16) as u8,
-            );
-            idx.write(Color(*entry));
+            BG_PALETTE
+                .index(MAP_BG_PALETTE_START + i)
+                .write(Color(*entry));
         }
 
-        // Use DMA to load tiles into VRAM
-        // We only use charblock 0 for now.
-        if tiles.len() > (CHARBLOCK_SIZE_BYTES / 4) {
-            panic!(
-                "Too many tiles in charblock! Expected up to {}, got {}",
-                (CHARBLOCK_SIZE_BYTES / 4),
-                tiles.len()
-            );
-        }
-        unsafe {
-            dma::DMA3::set_source(tiles.as_ptr());
-            dma::DMA3::set_dest(
-                (vram::VRAM_BASE_USIZE + (BACKGROUND_CHARBLOCK * CHARBLOCK_SIZE_BYTES)) as *mut u32,
-            );
-            dma::DMA3::set_count(tiles.len().try_into().unwrap());
-            dma::DMA3::set_control(
-                dma::DMAControlSetting::new()
-                    .with_enabled(true)
-                    .with_use_32bit(true),
-            );
-        }
+        // We only use one charblock for now.
+        vram::copy_tiles_4bpp_dma(&tiles, BACKGROUND_CHARBLOCK, 0).unwrap();
 
         // Load the four top-left tilemaps into VRAM (if they exist)
         lbg.load_backing_tilemap(BGScreenblockSlots::Zero, 0, 0);
@@ -119,15 +96,17 @@ impl LargeBackground {
         }
 
         // Enable BG0 (which we use)
-        let bg_settings = background::BackgroundControlSetting::new()
+        let bg_settings = BackgroundControl::new()
             .with_char_base_block(BACKGROUND_CHARBLOCK.try_into().unwrap())
             .with_screen_base_block(BACKGROUND_SCREEN_BASE_BLOCK.try_into().unwrap())
             .with_is_8bpp(false)
-            .with_size(background::BGSize::Three)
-            .with_bg_priority(3);
-        background::BG0CNT.write(bg_settings);
-        let dispcnt = display::display_control();
-        display::set_display_control(dispcnt.with_bg0(true).with_force_vblank(false));
+            .with_screen_size(BG_REG_64X64)
+            .with_priority(3);
+        BG0CNT.write(bg_settings);
+        DISPCNT.apply(|x| {
+            x.set_display_bg0(true);
+            x.set_display_frame1(false);
+        });
 
         return lbg;
     }
@@ -162,28 +141,11 @@ impl LargeBackground {
             }
         }
 
-        let tilemap_ptr = self.backing_tilemaps[backing_map_x][backing_map_y].as_ptr();
-        // Ensure that the pointer is aligned
-        assert_eq!((tilemap_ptr as usize) % 4, 0);
-        // Use DMA to speed up loading
-        let dest_ptr =
-            (vram::VRAM_BASE_USIZE + (screenblock_index * SCREENBLOCK_SIZE_BYTES)) as *mut u32;
-        let num_u32s_to_copy: u16 = self.backing_tilemaps[backing_map_x][backing_map_y]
-            .len()
-            .try_into()
+        // Copy tilemap via DMA
+        let tilemap: &[u16] = self.backing_tilemaps[backing_map_x][backing_map_y]
+            .as_slice_of()
             .unwrap();
-        // We checked alignment above
-        #[allow(clippy::cast_ptr_alignment)]
-        unsafe {
-            dma::DMA3::set_source(tilemap_ptr as *const u32);
-            dma::DMA3::set_dest(dest_ptr);
-            dma::DMA3::set_count(num_u32s_to_copy);
-            dma::DMA3::set_control(
-                dma::DMAControlSetting::new()
-                    .with_enabled(true)
-                    .with_use_32bit(true),
-            );
-        }
+        vram::copy_tilemap_dma(tilemap, screenblock_index).unwrap();
     }
 
     /// Returns whether the given area is visible on screen right now.
@@ -211,8 +173,8 @@ impl LargeBackground {
         self.ensure_correct_backing_tilemaps_are_loaded();
 
         // Perform actual hardware scroll
-        background::BG0HOFS.write(self.curr_x.try_into().unwrap());
-        background::BG0VOFS.write(self.curr_y.try_into().unwrap());
+        BG0HOFS.write(self.curr_x.try_into().unwrap());
+        BG0VOFS.write(self.curr_y.try_into().unwrap());
     }
 
     /// Scroll the large background by xy pixels.
@@ -237,8 +199,8 @@ impl LargeBackground {
         self.ensure_correct_backing_tilemaps_are_loaded();
 
         // Perform actual hardware scroll
-        background::BG0HOFS.write(self.curr_x.try_into().unwrap());
-        background::BG0VOFS.write(self.curr_y.try_into().unwrap());
+        BG0HOFS.write(self.curr_x.try_into().unwrap());
+        BG0VOFS.write(self.curr_y.try_into().unwrap());
     }
 
     fn ensure_correct_backing_tilemaps_are_loaded(&mut self) {

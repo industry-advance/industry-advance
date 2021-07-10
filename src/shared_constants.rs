@@ -1,5 +1,7 @@
 //! Constants used in multiple modules.
 
+/// Scanline after which vblank occurs
+pub const VBLANK_SCANLINE: u8 = 160;
 /// Screen height in pixels
 pub const SCREEN_HEIGHT: usize = 160;
 /// Screen width in pixels
@@ -8,12 +10,15 @@ pub const SCREEN_WIDTH: usize = 240;
 pub const SCREEN_HEIGHT_TILES: usize = SCREEN_HEIGHT / 8;
 /// Screen width in tiles
 pub const SCREEN_WIDTH_TILES: usize = SCREEN_WIDTH / 8;
-/// Size of a screenblock in bytes
-pub const SCREENBLOCK_SIZE_BYTES: usize = 32 * 32 * 2;
-// Size of a single charblock in bytes
-pub const CHARBLOCK_SIZE_BYTES: usize = 16 * 1024;
 /// Size of a single tile edge in pixels
 pub const TILE_SIZE_IN_PX: usize = 8;
+
+// Background sizes accepted by the hardware.
+pub const BG_REG_32X32: u8 = 0;
+pub const BG_REG_64X32: u8 = 1;
+pub const BG_REG_32X64: u8 = 2;
+pub const BG_REG_64X64: u8 = 3;
+
 /// Length of the edge of a single backing tilemap part in tiles
 pub const BACKING_MAP_LENGTH_IN_TILES: usize = 32;
 /// Charblock to use for map tiles

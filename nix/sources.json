@@ -5,22 +5,22 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "3cd7914b2c4cff48927e11c216dadfab7d903fe5",
-        "sha256": "1agq4nvbhrylf2s77kb4xhh9k7xcwdwggq764k4jgsbs70py8cw3",
+        "rev": "e0ca65c81a2d7a4d82a189f1e23a48d59ad42070",
+        "sha256": "1pq9nh1d8nn3xvbdny8fafzw87mj7gsmp6pxkdl65w2g18rmcmzx",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/3cd7914b2c4cff48927e11c216dadfab7d903fe5.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/e0ca65c81a2d7a4d82a189f1e23a48d59ad42070.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "nixos-unstable",
+        "branch": "nixos-21.05",
         "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "NixOS",
-        "repo": "nixpkgs-channels",
-        "rev": "84d74ae9c9cbed73274b8e4e00be14688ffc93fe",
-        "sha256": "0ww70kl08rpcsxb9xdx8m48vz41dpss4hh3vvsmswll35l158x0v",
+        "repo": "nixpkgs",
+        "rev": "9d1350d9d56411b685ff3de5839ed6728b1bf808",
+        "sha256": "1vgf9r7g5ikxb582ja0wp5xbjq1dsdvbs2nybckdfsd05w0dnay8",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/84d74ae9c9cbed73274b8e4e00be14688ffc93fe.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/9d1350d9d56411b685ff3de5839ed6728b1bf808.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
@@ -29,10 +29,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "8c007b60731c07dd7a052cce508de3bb1ae849b4",
-        "sha256": "1zybp62zz0h077zm2zmqs2wcg3whg6jqaah9hcl1gv4x8af4zhs6",
+        "rev": "3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f",
+        "sha256": "1mrj89gzrzhci4lssvzmmk31l715cddp7l39favnfs1qaijly814",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/8c007b60731c07dd7a052cce508de3bb1ae849b4.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/3f3fba4e2066f28a1ad7ac60e86a688a92eb5b5f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

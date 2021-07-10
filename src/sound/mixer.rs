@@ -12,8 +12,8 @@ use crate::debug_log::Subsystems::Sound;
 use crate::interrupt;
 use crate::FS;
 
-use byte_slice_cast::{AsByteSlice, AsSliceOf};
-use gba::io::{dma::*, irq, sound, timers};
+use byte_slice_cast::AsSliceOf;
+use gba::prelude::*;
 use gbfs_rs::GBFSError;
 use spinning_top::{const_spinlock, Spinlock};
 
@@ -64,7 +64,7 @@ impl From<wave::WaveError> for SoundError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Stream {
     /// The actual sample data
     data: &'static [i8],
@@ -94,38 +94,37 @@ static STREAMS: Spinlock<[Option<Stream>; NUM_MIXABLE_STREAMS]> =
 pub fn init() {
     // Before we do anything, make sure that interrupts are enabled
     // so that we can mix on vblank
-    if irq::IME.read() == irq::IrqEnableSetting::IRQ_NO {
+    if !IME.read() {
         panic!("Sound playback requires interrupts to be enabled")
     }
 
     // Master sound enable: has to be set before any of the registers are usable
-    sound::SOUNDCNT_X.write(sound::SoundMasterSetting::new().with_psg_fifo_master_enabled(true));
+    SOUND_STATUS.write(SoundStatus::new().with_enabled(true));
 
     // Configure sound timer initial value such that it overflows exactly when a sample is about to run out.
-    timers::TM0CNT_L.write(
+    TIMER0_RELOAD.write(
         (TIMER_MAX_VALUE - (CPU_CYCLES_PER_SEC / SAMPLE_RATE))
             .try_into()
             .unwrap(),
     );
-    timers::TM0CNT_H.write(
-        timers::TimerControlSetting::new()
-            // Count up by 1 each CPU cycle
-            .with_tick_rate(timers::TimerTickRate::CPU1)
+    // Count up by 1 each CPU cycle
+    TIMER0_CONTROL.write(
+        TimerControl::new()
+            .with_prescaler_selection(0)
             .with_enabled(true),
     );
 
+    FIFO_RESET.write(FifoReset::new().with_reset_fifo_a(true));
     // Configure wave sound control register
-    sound::SOUNDCNT_H.write(
-        sound::WaveVolumeEnableSetting::new()
+    FIFO_CONTROL.write(
+        FifoControl::new()
             // The other channels should not be audible
-            .with_dma_sound_a_full_volume(true)
+            .with_full_volume_a(true)
             // Mono sound (same track on both channels)
-            .with_dma_sound_a_enable_left(true)
-            .with_dma_sound_a_enable_right(true)
+            .with_enable_left_a(true)
+            .with_enable_right_a(true)
             // Sample each time timer 0 (rather than 1) runs out
-            .with_dma_sound_a_timer_select(false)
-            // Ensure the FIFO is prepared
-            .with_dma_sound_a_reset_fifo(true),
+            .with_use_timer1_a(false),
     );
 
     // Configure the vblank interrupt to switch our buffers
@@ -134,20 +133,20 @@ pub fn init() {
     // Configure DMA 1 to continuously transfer samples from the currently active buffer
     unsafe {
         let buf_0 = BUF_0.lock();
-        DMA1::set_source(buf_0.as_ptr() as *const u32);
+        DMA1SAD.write(buf_0.as_ptr() as usize);
         // Write into direct sound channel A's FIFO
-        DMA1::set_dest(sound::FIFO_A_L.to_usize() as *mut u32);
-        DMA1::set_control(
-            DMAControlSetting::new()
+        DMA1DAD.write(FIFO_A.as_usize());
+        DMA1CNT_H.write(
+            DmaControl::new()
                 .with_dma_repeat(true)
                 // Transfer a word at a time
-                .with_use_32bit(true)
+                .with_transfer_u32(true)
                 // Start DMA when FIFO needs sample
-                .with_start_time(DMAStartTiming::Special)
+                .with_start_time(DmaStartTiming::Special)
                 // We want the next sample to be transferred each time
-                .with_source_address_control(DMASrcAddressControl::Increment)
+                .with_src_addr(SrcAddrControl::Increment)
                 // Total FIFO length is 32 bits, meaning we should always write to same address
-                .with_dest_address_control(DMADestAddressControl::Fixed)
+                .with_dest_addr(DestAddrControl::Fixed)
                 .with_enabled(true),
         );
     }
@@ -160,12 +159,12 @@ fn switch_front_buf() {
         FrontBuf::Zero => {
             *front_buf = FrontBuf::One;
             let buf_1 = BUF_1.lock();
-            unsafe { DMA1::set_source(buf_1.as_ptr() as *const u32) };
+            unsafe { DMA1SAD.write(buf_1.as_ptr() as usize) };
         }
         FrontBuf::One => {
             *front_buf = FrontBuf::Zero;
             let buf_0 = BUF_0.lock();
-            unsafe { DMA1::set_source(buf_0.as_ptr() as *const u32) };
+            unsafe { DMA1SAD.write(buf_0.as_ptr() as usize) };
         }
     }
 }

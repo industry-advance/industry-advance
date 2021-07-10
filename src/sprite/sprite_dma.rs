@@ -1,6 +1,7 @@
 use super::HWSpriteSize;
 use core::convert::TryInto;
-use gba::io::dma;
+use gba::mmio_addresses::*;
+use gba::mmio_types::*;
 
 const SPRITE_CHARBLOCK_BASE_ADDR: usize = 0x0601_0000;
 const NUM_BYTES_PER_SPRITE_TILE_SLOT: usize = 64;
@@ -26,13 +27,9 @@ pub fn dma_copy_sprite(sprite_tile_data: &[u32], start_slot: usize, sprite_size:
     // Perform transfer
     let dest_addr = SPRITE_CHARBLOCK_BASE_ADDR + (start_slot * NUM_BYTES_PER_SPRITE_TILE_SLOT);
     unsafe {
-        dma::DMA3::set_source(sprite_tile_data.as_ptr());
-        dma::DMA3::set_dest((dest_addr) as *mut u32);
-        dma::DMA3::set_count(sprite_tile_data.len().try_into().unwrap());
-        dma::DMA3::set_control(
-            dma::DMAControlSetting::new()
-                .with_enabled(true)
-                .with_use_32bit(true),
-        );
+        DMA3SAD.write(sprite_tile_data.as_ptr() as usize);
+        DMA3DAD.write(dest_addr);
+        DMA3CNT_L.write(sprite_tile_data.len().try_into().unwrap());
+        DMA3CNT_H.write(DmaControl::new().with_enabled(true).with_transfer_u32(true));
     }
 }

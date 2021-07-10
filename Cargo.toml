@@ -10,18 +10,22 @@ codegen-units = 1
 opt-level = 3
 
 [dependencies]
-gba = {git = "https://github.com/rust-console/gba" } # We use features that aren't present in the latest release yet
+gba = {git = "https://github.com/rust-console/gba", branch = "main" } # We use features that aren't present in the latest release yet
 ansi_rgb = "0.2"
 arrayref = "0.3"
-arrayvec = {version = "0.5.2", default-features = false}
+arrayvec = {version = "0.7.1", default-features = false}
 fixed = "1"
 twox-hash = {version = "1", default-features = false}
-hashbrown = {version = "0.9.1", default-features = false, features = ["inline-more"]}
+hashbrown = {version = "0.11.2", default-features = false, features = ["inline-more"]}
 tiny_ecs = {git = "https://gitlab.com/casept/tiny_ecs", branch = "no_std", features = ["no_std"]}
 gbfs_rs = {git = "https://github.com/industry-advance/gbfs_rs"}
 tiny_riff = {git = "https://github.com/industry-advance/tiny_riff"}
-serde = {version = "1.0", default-features = false, features = ["derive"]}
-serde_json = {version = "1.0", default-features = false, features = ["alloc"]}
+serde = {version = "1", default-features = false, features = ["derive"]}
+serde_json = {version = "1", default-features = false, features = ["alloc"]}
 spinning_top = "0.2.2"
-linked_list_allocator = "0.8.11"
-byte-slice-cast = {version = "1.0", default-features = false}
+linked_list_allocator = "0.9.0"
+byte-slice-cast = {version = "1", default-features = false}
+
+# TODO: Remove once https://github.com/Amanieu/parking_lot/issues/288 is fixed in release
+[patch.crates-io]
+lock_api = {git = "https://github.com/Amanieu/parking_lot"}

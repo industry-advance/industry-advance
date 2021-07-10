@@ -12,12 +12,12 @@ from enum import IntEnum, auto
 from convert_assets import rescale_sprites_if_needed
 import convert_assets
 
-def log(msg, header = "INFO"):
+
+def log(msg, header="INFO"):
 
     logstring = "[{}]: {}".format(header, msg)
-    #convert_assets.LOGFILE.write(logstring + "\n")
-    #convert_assets.LOGFILE.flush()
-    
+    # convert_assets.LOGFILE.write(logstring + "\n")
+    # convert_assets.LOGFILE.flush()
 
     print(logstring)
 
@@ -235,9 +235,9 @@ BLOCK_NAMES: List[str] = [
     "diode",
 ]
 
-#MAP_IDS: List[List[str]]
+# MAP_IDS: List[List[str]]
 
-CONTENT_TYPES=[
+CONTENT_TYPES = [
     "item",
     "block",
     "mech",
@@ -250,8 +250,8 @@ CONTENT_TYPES=[
     "zone",
     "loadout",
     "typeid",
-    "error"
-    ]
+    "error",
+]
 
 BLOCKS: Dict[int, str] = {i: k for (i, k) in enumerate(BLOCK_NAMES)}
 
@@ -336,7 +336,7 @@ def read_metadata(data: bytearray) -> Tuple[Dict[str, str], bytearray]:
     print("Number of metadata map entries: {}".format(num_entries))
     data = data[2:]
     metadata: Dict[str, str] = dict()
-    for i in range(0, num_entries):
+    for _ in range(0, num_entries):
         # Read map key
         (key, data) = utf8m_java_to_utf8(data)
         # Read map value
@@ -366,7 +366,7 @@ def read_content(data: bytearray) -> Tuple[List[List[str]], bytearray]:
             # Read a string and discard it
             (content_string, data) = utf8m_java_to_utf8(data)
             map_ids[_content_type].append(content_string)
-    
+
     log("final Data: {}".format(map_ids[1]))
     return (map_ids, data)
 
@@ -455,7 +455,12 @@ def utf8m_java_to_utf8(data: bytearray) -> Tuple[str, bytearray]:
 
 
 def floor_ids_to_png(
-    width: int, height: int, floor_ids: List[List[int]], png_path: str, used_sprites: Dict[int, str], map_ids: List[List[str]]
+    width: int,
+    height: int,
+    floor_ids: List[List[int]],
+    png_path: str,
+    used_sprites: Dict[int, str],
+    map_ids: List[List[str]],
 ):
     # Create image with appropriate size
     # Map names to filenames
@@ -464,7 +469,7 @@ def floor_ids_to_png(
     images = dict()
     root_directory = "Mindustry/core/assets-raw/sprites/blocks/"
     for key in used_sprites:
-        
+
         # Find out in which subdir the file resides
         search_string = root_directory + "/**/" + map_ids[1][key] + ".png"
         log("searching for: {}".format(search_string))
@@ -473,25 +478,25 @@ def floor_ids_to_png(
             search_string = root_directory + "/**/" + map_ids[1][key] + "[0-9].png"
             log("searching for: {}".format(search_string))
             matches = glob.glob(search_string, recursive=True)
-        log("matches: ".format(matches))
-        
-        #filename = "{}.png".format(matches[0])
+        log("matches: {}".format(matches))
 
-        log("Sprite for ID {}: {}".format( key, matches[0]), "MAP")
+        # filename = "{}.png".format(matches[0])
+
+        log("Sprite for ID {}: {}".format(key, matches[0]), "MAP")
         # print(matches)
         sprite_path_after_resize = rescale_sprites_if_needed([matches[0]])[0]
         try:
-            
-            log("tmpSprite for ID {}: {}".format( key, sprite_path_after_resize), "MAP")
+
+            log("tmpSprite for ID {}: {}".format(key, sprite_path_after_resize), "MAP")
             img = Image.open(sprite_path_after_resize)
-            
+
             images[map_ids[1][key]] = img
         except Exception:
             print("No such file: {}".format(sprite_path_after_resize))
 
     map_img = Image.new(size=(width * 16, height * 16), mode="RGBA")
     used_sprites[0] = "air"
-    images["air"] = Image.new(size=(16,16), mode="RGBA")
+    images["air"] = Image.new(size=(16, 16), mode="RGBA")
     log("images")
     for key in images:
         log("exists", key)
@@ -533,7 +538,9 @@ def map_file_to_map(path: str) -> Tuple[int, int, str, str]:
         print("Reading content")
         (map_ids, savedata) = read_content(savedata)
         print("Reading actual map data...")
-        (width, height, floor_ids, ore_ids, _, savedata, used_sprites) = read_map(savedata, map_ids)
+        (width, height, floor_ids, _, _, savedata, used_sprites) = read_map(
+            savedata, map_ids
+        )
         print("Width: {}, height: {}".format(width, height))
         print("Converting to PNG")
         # TODO: Tempdir

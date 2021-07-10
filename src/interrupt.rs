@@ -8,8 +8,8 @@
 
 use crate::debug_log::Subsystems::Interrupt;
 
-use gba::io::display;
-use gba::io::irq::*;
+use gba::mmio_addresses::*;
+use gba::mmio_types::InterruptFlags;
 
 /// Can't use a mutex here because they internally require disabling interrupts
 /// to lock due to the way we've implemented atomics emulation.
@@ -30,7 +30,7 @@ pub fn timer1_isr_active() -> bool {
 ///
 /// Will panic if interrupts are disabled (meaning you didn't call `init()` first).
 pub fn set_timer1_handler(f: Option<&'static dyn Fn()>) {
-    if IME.read() == IrqEnableSetting::IRQ_NO {
+    if IME.read() == false {
         panic!("Enable interrupts by calling init() before registering an ISR");
     }
     unsafe {
@@ -49,7 +49,9 @@ pub fn set_timer1_handler(f: Option<&'static dyn Fn()>) {
             flags = flags.with_timer1(false);
         }
     }
-    IE.write(flags);
+    unsafe {
+        IE.write(flags);
+    }
 }
 
 /// Whether an ISR is currently active for `vblank`.
@@ -63,7 +65,7 @@ pub fn vblank_isr_active() -> bool {
 ///
 /// Will panic if interrupts are disabled (meaning you didn't call `init()` first).
 pub fn set_vblank_handler(f: Option<&'static dyn Fn()>) {
-    if IME.read() == IrqEnableSetting::IRQ_NO {
+    if IME.read() == false {
         panic!("Enable interrupts by calling init() before registering an ISR");
     }
     unsafe {
@@ -76,31 +78,35 @@ pub fn set_vblank_handler(f: Option<&'static dyn Fn()>) {
         Some(_) => {
             debug_log!(Interrupt, "Enabling handler for vblank");
             flags = flags.with_vblank(true);
-            display::DISPSTAT.write(display::DISPSTAT.read().with_vblank_irq_enable(true));
+            DISPSTAT.apply(|x| x.set_is_vblank(true));
         }
         None => {
             debug_log!(Interrupt, "Disabling handler for vblank");
             flags = flags.with_vblank(false);
-            display::DISPSTAT.write(display::DISPSTAT.read().with_vblank_irq_enable(false));
+            DISPSTAT.apply(|x| x.set_is_vblank(false));
         }
     }
-    IE.write(flags);
+    unsafe {
+        IE.write(flags);
+    }
 }
 
 /// Initializes the module.
 ///
 /// Repeated calls will have no effect.
 ///
+/// # Safety
 /// Do not call in a context where enabling interrupts is undesirable.
-pub fn init() {
-    if IME.read() == IrqEnableSetting::IRQ_NO {
-        IME.write(IrqEnableSetting::IRQ_YES);
+pub unsafe fn init() {
+    if IME.read() == false {
+        IME.write(true);
     }
-    set_irq_handler(irq_handler);
+    USER_IRQ_HANDLER.write(Some(irq_handler));
 }
 
 /// This function has to have exactly this signature so that the hardware knows what to do with it.
-extern "C" fn irq_handler(flags: IrqFlags) {
+unsafe extern "C" fn irq_handler() {
+    let flags: InterruptFlags = IRQ_PENDING.read();
     // Run the handler if they're defined
     if flags.timer1() {
         unsafe {

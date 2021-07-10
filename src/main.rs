@@ -4,7 +4,6 @@
 #![feature(start)]
 // Needed for the allocator
 #![feature(alloc_error_handler)]
-#![feature(const_fn)]
 // Needed to deal with errors when compiling the FS
 #![feature(const_panic)]
 // Needed to implement emulation of atomics
@@ -13,18 +12,16 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-#![feature(const_in_array_repeat_expressions)]
-// Nice-to-have features
-#![feature(try_trait)]
 // Disable a bunch of clippy lints I disagree with
 #![allow(clippy::needless_return)]
 #![allow(clippy::module_inception)]
+#![allow(clippy::empty_loop)]
 
 #[macro_use]
 extern crate alloc;
 
 use ansi_rgb::{red, Foreground};
-use gba::mgba::{MGBADebug, MGBADebugLevel};
+use gba::debugging::mgba::{MGBADebug, MGBADebugLevel};
 use gbfs_rs::GBFSFilesystem;
 
 extern crate arrayref;
@@ -47,6 +44,7 @@ mod sound;
 mod sprite;
 mod systems;
 mod text;
+mod vram;
 mod window;
 
 use debug_log::*;

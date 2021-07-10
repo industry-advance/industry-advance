@@ -11,7 +11,7 @@
             "type": "shell",
             "isBackground": false,
             "linux": {
-                "command": "cargo make build-debug && (nohup /usr/bin/mgba-qt --log-level=15 -g ${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance &) && sleep 5 && echo $?"
+                "command": "cargo make build-debug && (nohup mgba-qt --log-level=15 -g ${workspaceRoot}/target/thumbv4-none-agb/debug/industry-advance &) && sleep 5 && echo $?"
             },
             "command": "debuggerReady",
             "problemMatcher": {
@@ -26,12 +26,14 @@
             }
         },
     ],
-    "inputs":
-        [{
+    "inputs": [
+        {
             "id": "terminate",
             "type": "command",
             "command": "workbench.action.tasks.terminate",
-            "args": {"label": "debugRun"}
-        }]
-    
+            "args": {
+                "label": "debugRun"
+            }
+        }
+    ]
 }

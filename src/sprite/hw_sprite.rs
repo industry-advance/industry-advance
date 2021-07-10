@@ -1,5 +1,9 @@
 use core::convert::TryInto;
-use gba::oam::{ObjectShape, ObjectSize};
+
+// Sprite shapes supported by the hardware.
+pub const Square: u16 = 0;
+pub const Horizontal: u16 = 1;
+pub const Vertical: u16 = 2;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -54,27 +58,25 @@ impl HWSpriteSize {
     }
 
     /// Calculates the sprite's size and shape in the format required by OAM.
-    pub fn to_obj_size_and_shape(&self) -> (ObjectSize, ObjectShape) {
+    pub fn to_obj_size_and_shape(&self) -> (u16, u16) {
         use HWSpriteSize::*;
-        use ObjectShape::*;
-        use ObjectSize::*;
         match self {
-            EightByEight => (Zero, Square),
-            SixteenBySixteen => (One, Square),
-            ThirtyTwoByThirtyTwo => (Two, Square),
-            SixtyFourBySixtyFour => (Three, Square),
+            EightByEight => (0, Square),
+            SixteenBySixteen => (1, Square),
+            ThirtyTwoByThirtyTwo => (2, Square),
+            SixtyFourBySixtyFour => (3, Square),
 
-            EightBySixteen => (Zero, Vertical),
-            EightByThirtyTwo => (One, Vertical),
+            EightBySixteen => (0, Vertical),
+            EightByThirtyTwo => (1, Vertical),
 
-            SixteenByEight => (Zero, Horizontal),
-            SixteenByThirtyTwo => (Two, Vertical),
+            SixteenByEight => (0, Horizontal),
+            SixteenByThirtyTwo => (2, Vertical),
 
-            ThirtyTwoByEight => (One, Horizontal),
-            ThirtyTwoBySixteen => (Two, Horizontal),
-            ThirtyTwoBySixtyFour => (Three, Vertical),
+            ThirtyTwoByEight => (1, Horizontal),
+            ThirtyTwoBySixteen => (2, Horizontal),
+            ThirtyTwoBySixtyFour => (3, Vertical),
 
-            SixtyFourByThirtyTwo => (Three, Horizontal),
+            SixtyFourByThirtyTwo => (3, Horizontal),
         }
     }
 

@@ -3,17 +3,20 @@ use crate::debug_log::*;
 use crate::entities;
 use crate::entities::{cursor, player};
 use crate::map::{Map, Maps};
+use crate::shared_constants::VBLANK_SCANLINE;
+use crate::shared_types::Background;
 use crate::sprite::HWSpriteAllocator;
 use crate::systems::{
     building_system, item_movement_system, mining_system, InputSystem, MovementSystem,
 };
-use crate::window::Window;
+
+use crate::window::*;
 
 use crate::FS;
 
 use alloc::{boxed::Box, vec::Vec};
 
-use gba::io::display::{DISPCNT, VBLANK_SCANLINE, VCOUNT};
+use gba::mmio_addresses::*;
 use tiny_ecs::Entities;
 
 /// Data which is needed to perform game mode switches.
@@ -68,14 +71,15 @@ impl Game {
         sprite_allocator.init();
 
         // Stop blanking the screen so that menus are visible
-        DISPCNT.write(DISPCNT.read().with_force_vblank(false));
+        DISPCNT.write(DISPCNT.read().with_forced_blank(false));
 
         // Ask the player which map they'd like
         let maps = Maps::read_map_data();
         let map_names: Vec<&str> = maps.maps.iter().map(|x| x.name.as_str()).collect();
-        let mut win_menu = Window::new();
+        let mut win_menu = Window::new(WindowArea::FULLSCREEN, Background::Two)
+            .expect("Failed to initialize map select menu!");
         win_menu.show();
-        let choice_idx = win_menu.make_text_menu("Choose a map", &map_names);
+        let choice_idx = win_menu.make_text_menu("Choose a map", &map_names).unwrap();
         drop(win_menu);
         let map_entry = &maps.maps[choice_idx];
         // Create a map
@@ -83,7 +87,7 @@ impl Game {
         let map = map_entry.get_map();
 
         // Ensure sprites are visible
-        DISPCNT.write(DISPCNT.read().with_obj(true).with_oam_memory_1d(true));
+        DISPCNT.write(DISPCNT.read().with_display_obj(true).with_obj_vram_1d(true));
 
         // Initialize the ECS
         let mut e = Entities::new(Some(256), Some(24));

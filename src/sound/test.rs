@@ -5,6 +5,9 @@ use crate::test::test;
 fn test_sound_mixer_init() {
     test(
         &|| {
+            unsafe {
+                crate::interrupt::init();
+            }
             mixer::init();
         },
         "test_sound_mixer_init",
@@ -15,7 +18,9 @@ fn test_sound_mixer_init() {
 fn test_raw_sound_playback() {
     test(
         &|| {
-            crate::interrupt::init();
+            unsafe {
+                crate::interrupt::init();
+            }
             mixer::init();
             mixer::add_raw_file_stream("drill.wav").unwrap();
             mixer::spin_until_all_streams_inactive();
@@ -29,7 +34,7 @@ fn test_raw_sound_playback() {
 fn test_wav_sound_playback() {
     test(
         &|| {
-            crate::interrupt::init();
+            unsafe { crate::interrupt::init() };
             mixer::init();
             mixer::add_wave_file_stream("drill.wav").unwrap();
             mixer::spin_until_all_streams_inactive();
